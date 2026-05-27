@@ -2745,7 +2745,9 @@ function moveScheduleKey(keys: string[], activeKey: string, targetKey: string): 
 function formatResultMethod(result?: MatchResult): string | undefined {
   if (!result?.method) return undefined;
   const submissionType = result.submissionType?.trim();
-  return submissionType ? `${result.method} - ${submissionType}` : result.method;
+  return submissionType && isSubmissionMethod(result.method)
+    ? `${result.method} - ${submissionType}`
+    : result.method;
 }
 
 /* ── Results View ── */
