@@ -944,7 +944,11 @@ function EntryScreen({
     >
       <main className="auth-shell">
         <section className="auth-hero">
-          <div className="sb-mark auth-mark">BJJ</div>
+          <img
+            className="auth-logo"
+            src="/ntnui-jiu-jitsu-logo.jpg"
+            alt="NTNUI Jiu-Jitsu"
+          />
           <h1>NTNUI Jiu-Jitsu</h1>
           <p>Tournament desk</p>
           <button className="btn sm" type="button" onClick={onThemeToggle}>

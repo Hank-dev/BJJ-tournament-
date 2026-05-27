@@ -111,10 +111,13 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   align-items: flex-start;
   gap: 14px;
 }
-.auth-mark {
-  width: 42px;
-  height: 42px;
-  font-size: 15px;
+.auth-logo {
+  width: min(360px, 84vw);
+  height: auto;
+  display: block;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
 }
 .auth-hero h1 {
   margin: 0;
