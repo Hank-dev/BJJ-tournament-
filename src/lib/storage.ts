@@ -111,7 +111,7 @@ export function isTournamentState(value: unknown): value is TournamentState {
   );
 }
 
-function isTournamentStore(value: unknown): value is TournamentStore {
+export function isTournamentStore(value: unknown): value is TournamentStore {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as TournamentStore;
   return (
@@ -127,7 +127,7 @@ function isTournamentStore(value: unknown): value is TournamentStore {
   );
 }
 
-function normalizeTournamentStore(store: TournamentStore): TournamentStore {
+export function normalizeTournamentStore(store: TournamentStore): TournamentStore {
   if (store.tournaments.length === 0) {
     const fallback = createStoredTournament();
     return { activeTournamentId: fallback.id, tournaments: [fallback] };

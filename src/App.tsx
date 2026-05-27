@@ -59,6 +59,13 @@ import {
   verifyAdminPasscode,
   type TournamentStore
 } from './lib/storage';
+import {
+  isAbortError,
+  isRemoteStoreEnabled,
+  loadRemoteTournamentStore,
+  saveRemoteTournamentStore,
+  verifyRemoteAdminPasscode
+} from './lib/remoteStorage';
 import type {
   Bracket,
   Competitor,
@@ -118,7 +125,11 @@ interface CsvImportPreview {
 function App() {
   const [tournamentStore, setTournamentStore] = useState<TournamentStore>(() => loadTournamentStore());
   const [sessionMode, setSessionMode] = useState<SessionMode>('entry');
-  const [adminPasscodeConfigured, setAdminPasscodeConfigured] = useState(() => hasAdminPasscode());
+  const [adminPasscodeConfigured, setAdminPasscodeConfigured] = useState(
+    () => hasAdminPasscode() || isRemoteStoreEnabled()
+  );
+  const [adminSessionPasscode, setAdminSessionPasscode] = useState('');
+  const [remoteStoreReady, setRemoteStoreReady] = useState(() => !isRemoteStoreEnabled());
   const [activeTab, setActiveTab] = useState<TabId>('competitors');
   const [guestTab, setGuestTab] = useState<GuestTabId>('brackets');
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>('');
@@ -139,8 +150,52 @@ function App() {
   };
 
   useEffect(() => {
+    if (!isRemoteStoreEnabled()) return;
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    loadRemoteTournamentStore(controller.signal)
+      .then((remoteStore) => {
+        if (cancelled || !remoteStore) return;
+        setTournamentStore(remoteStore);
+        setSelectedDivisionId('');
+      })
+      .catch((error) => {
+        if (!isAbortError(error)) {
+          console.warn('Remote tournament store could not be loaded.', error);
+        }
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setRemoteStoreReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     saveTournamentStore(tournamentStore);
-  }, [tournamentStore]);
+
+    if (!isRemoteStoreEnabled() || !remoteStoreReady || sessionMode !== 'admin') return;
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      saveRemoteTournamentStore(tournamentStore, adminSessionPasscode, controller.signal).catch((error) => {
+        if (!isAbortError(error)) {
+          console.warn('Tournament store could not be saved remotely.', error);
+        }
+      });
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [adminSessionPasscode, remoteStoreReady, sessionMode, tournamentStore]);
 
   useEffect(() => {
     if (!selectedDivisionId && tournament.divisions[0]) {
@@ -221,18 +276,40 @@ function App() {
     setCsvPreview({ rows: [], errors: [] });
   };
 
-  const handleAdminPasscodeSubmit = (passcode: string): boolean => {
+  const handleAdminPasscodeSubmit = async (passcode: string): Promise<boolean> => {
     const trimmedPasscode = passcode.trim();
     if (!trimmedPasscode) return false;
+
+    if (isRemoteStoreEnabled()) {
+      try {
+        const accepted = await verifyRemoteAdminPasscode(trimmedPasscode);
+        if (!accepted) return false;
+      } catch (error) {
+        if (!isAbortError(error)) {
+          console.warn('Admin passcode could not be verified remotely.', error);
+        }
+        return false;
+      }
+
+      setAdminSessionPasscode(trimmedPasscode);
+      if (!adminPasscodeConfigured) {
+        setAdminPasscode(trimmedPasscode);
+        setAdminPasscodeConfigured(true);
+      }
+      setSessionMode('admin');
+      return true;
+    }
 
     if (!adminPasscodeConfigured) {
       setAdminPasscode(trimmedPasscode);
       setAdminPasscodeConfigured(true);
+      setAdminSessionPasscode(trimmedPasscode);
       setSessionMode('admin');
       return true;
     }
 
     if (verifyAdminPasscode(trimmedPasscode)) {
+      setAdminSessionPasscode(trimmedPasscode);
       setSessionMode('admin');
       return true;
     }
@@ -825,22 +902,28 @@ function EntryScreen({
   tournaments: TournamentStore['tournaments'];
   activeTournamentId: string;
   adminPasscodeConfigured: boolean;
-  onAdminPasscodeSubmit: (passcode: string) => boolean;
+  onAdminPasscodeSubmit: (passcode: string) => boolean | Promise<boolean>;
   onGuestSelect: (tournamentId: string) => void;
   onThemeToggle: () => void;
 }) {
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const accepted = onAdminPasscodeSubmit(passcode);
-    if (!accepted) {
-      setError(adminPasscodeConfigured ? 'Wrong admin passcode.' : 'Enter an admin passcode.');
-      return;
+    setIsSubmitting(true);
+    try {
+      const accepted = await onAdminPasscodeSubmit(passcode);
+      if (!accepted) {
+        setError(adminPasscodeConfigured ? 'Wrong admin passcode.' : 'Enter an admin passcode.');
+        return;
+      }
+      setError('');
+      setPasscode('');
+    } finally {
+      setIsSubmitting(false);
     }
-    setError('');
-    setPasscode('');
   };
 
   return (
@@ -876,10 +959,11 @@ function EntryScreen({
                   value={passcode}
                   onChange={(event) => setPasscode(event.target.value)}
                   autoComplete="current-password"
+                  disabled={isSubmitting}
                 />
               </div>
               {error && <div className="auth-error">{error}</div>}
-              <button className="btn primary" type="submit">
+              <button className="btn primary" type="submit" disabled={isSubmitting}>
                 <span className="ic"><Lock size={13} /></span>
                 {adminPasscodeConfigured ? 'Log in' : 'Create login'}
               </button>
