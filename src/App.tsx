@@ -944,11 +944,6 @@ function EntryScreen({
     >
       <main className="auth-shell">
         <section className="auth-hero">
-          <img
-            className="auth-logo"
-            src="/ntnui-jiu-jitsu-logo.jpg"
-            alt="NTNUI Jiu-Jitsu"
-          />
           <h1>NTNUI Jiu-Jitsu</h1>
           <p>Tournament desk</p>
           <button className="btn sm" type="button" onClick={onThemeToggle}>
@@ -1060,14 +1055,6 @@ function GuestApp({
   return (
     <div className={`app ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
       <aside className="sidebar">
-        <div className="sb-brand">
-          <div className="sb-mark">BJJ</div>
-          <div className="sb-brand-text">
-            <div className="name">Guest View</div>
-            <div className="sub">Read only</div>
-          </div>
-        </div>
-
         <div className="sb-tournament">
           <div className="lbl">Tournament</div>
           <select
