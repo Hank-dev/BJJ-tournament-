@@ -945,8 +945,8 @@ function EntryScreen({
       <main className="auth-shell">
         <section className="auth-hero">
           <div className="sb-mark auth-mark">BJJ</div>
-          <h1>Tournament Desk</h1>
-          <p>Admin login for event control. Guest entry for read-only brackets, schedule, and results.</p>
+          <h1>NTNUI Jiu-Jitsu</h1>
+          <p>Tournament desk</p>
           <button className="btn sm" type="button" onClick={onThemeToggle}>
             <span className="ic">{theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}</span>
             Theme
@@ -954,17 +954,12 @@ function EntryScreen({
         </section>
 
         <section className="auth-grid">
-          <form className="panel auth-panel" onSubmit={submit}>
+          <form className="panel auth-panel admin-auth-panel" onSubmit={submit}>
             <div className="panel-hd">
               <Lock size={15} />
-              <span className="t">{adminPasscodeConfigured ? 'Admin login' : 'Create admin login'}</span>
+              <span className="t">{adminPasscodeConfigured ? 'Admin' : 'Create admin passcode'}</span>
             </div>
             <div className="auth-panel-body">
-              <p>
-                {adminPasscodeConfigured
-                  ? 'Enter the local admin passcode to create and manage tournaments.'
-                  : 'Set a local admin passcode for this browser.'}
-              </p>
               <div className="field-label">
                 <span className="lbl">Passcode</span>
                 <input
@@ -987,10 +982,9 @@ function EntryScreen({
           <section className="panel auth-panel">
             <div className="panel-hd">
               <Eye size={15} />
-              <span className="t">Guest entry</span>
+              <span className="t">Tournaments</span>
             </div>
             <div className="auth-panel-body">
-              <p>Select a tournament to view brackets, schedule, and results without admin controls.</p>
               <div className="guest-tournament-list">
                 {tournaments.map((record) => (
                   <button
