@@ -43,7 +43,8 @@ import {
   makeCompetitorSlot,
   makeSourceSlot,
   resolveMatch,
-  updateMatchSlot
+  updateMatchSlot,
+  type ScheduledMatch
 } from './lib/brackets';
 import { parseCompetitorCsv, csvTemplate, type CsvCompetitorRow } from './lib/csv';
 import { createId } from './lib/id';
@@ -654,6 +655,13 @@ function App() {
     setActiveTab('competitors');
   };
 
+  const updateScheduleOrder = (scheduleOrder: string[]) => {
+    commitTournament((current) => ({
+      ...current,
+      scheduleOrder: scheduleOrder.length > 0 ? scheduleOrder : undefined
+    }));
+  };
+
   const counts = {
     competitors: tournament.competitors.length,
     divisions: tournament.divisions.length,
@@ -862,6 +870,8 @@ function App() {
             <ScheduleView
               divisions={tournament.divisions}
               competitorById={competitorById}
+              scheduleOrder={tournament.scheduleOrder}
+              onScheduleOrderChange={updateScheduleOrder}
               onNavigateToMatch={navigateToMatch}
             />
           )}
@@ -1130,6 +1140,7 @@ function GuestApp({
             <ScheduleView
               divisions={tournament.divisions}
               competitorById={competitorById}
+              scheduleOrder={tournament.scheduleOrder}
               onNavigateToMatch={onNavigateToMatch}
             />
           )}
@@ -2390,15 +2401,33 @@ function CustomMatchBuilder({
 function ScheduleView({
   divisions,
   competitorById,
+  scheduleOrder = [],
+  onScheduleOrderChange,
   onNavigateToMatch,
 }: {
   divisions: Division[];
   competitorById: Map<string, Competitor>;
+  scheduleOrder?: string[];
+  onScheduleOrderChange?: (scheduleOrder: string[]) => void;
   onNavigateToMatch: (divisionId: string, matchId: string) => void;
 }) {
   const [matCount, setMatCount] = useState(1);
+  const [pressedKey, setPressedKey] = useState<string | null>(null);
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
+  const orderedKeysRef = useRef<string[]>([]);
+  const dragStateRef = useRef<{
+    key: string;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    timerId: number;
+    activated: boolean;
+    handle: HTMLButtonElement;
+  } | null>(null);
+  const suppressClickRef = useRef<string | null>(null);
 
-  const schedule = useMemo(() => {
+  const generatedSchedule = useMemo(() => {
     const entries = divisions
       .filter((d) => d.bracket && d.bracket.matches.length > 0)
       .map((d) => ({ division: d, matches: d.bracket!.matches }));
@@ -2406,6 +2435,47 @@ function ScheduleView({
   }, [divisions, matCount]);
 
   const activeDivisions = divisions.filter((d) => d.bracket && d.bracket.matches.length > 0);
+  const allMatches = useMemo(
+    () => activeDivisions.flatMap((d) => d.bracket!.matches),
+    [activeDivisions]
+  );
+  const canReorder = Boolean(onScheduleOrderChange);
+
+  const { orderedSchedule, orderedKeys, generatedKeys, hasCustomOrder } = useMemo(() => {
+    const generatedKeys = generatedSchedule.map(scheduleEntryKey);
+    const generatedKeySet = new Set(generatedKeys);
+    const validStoredOrder = scheduleOrder.filter((key) => generatedKeySet.has(key));
+    const storedKeySet = new Set(validStoredOrder);
+    const orderedKeys = [
+      ...validStoredOrder,
+      ...generatedKeys.filter((key) => !storedKeySet.has(key))
+    ];
+    const scheduleByKey = new Map(generatedSchedule.map((entry) => [scheduleEntryKey(entry), entry]));
+    const orderedSchedule = orderedKeys
+      .map((key) => scheduleByKey.get(key))
+      .filter((entry): entry is ScheduledMatch => Boolean(entry));
+
+    return {
+      orderedSchedule,
+      orderedKeys,
+      generatedKeys,
+      hasCustomOrder:
+        validStoredOrder.length > 0 &&
+        orderedKeys.some((key, index) => key !== generatedKeys[index])
+    };
+  }, [generatedSchedule, scheduleOrder]);
+
+  useEffect(() => {
+    orderedKeysRef.current = orderedKeys;
+  }, [orderedKeys]);
+
+  useEffect(() => {
+    return () => {
+      if (dragStateRef.current) {
+        window.clearTimeout(dragStateRef.current.timerId);
+      }
+    };
+  }, []);
 
   if (activeDivisions.length === 0) {
     return (
@@ -2417,7 +2487,105 @@ function ScheduleView({
     );
   }
 
-  const completedCount = schedule.filter((s) => s.match.result).length;
+  const beginSchedulePress = (event: React.PointerEvent<HTMLButtonElement>, key: string) => {
+    if (!canReorder || !onScheduleOrderChange) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    event.stopPropagation();
+    if (dragStateRef.current) {
+      window.clearTimeout(dragStateRef.current.timerId);
+    }
+
+    const handle = event.currentTarget;
+    setPressedKey(key);
+    dragStateRef.current = {
+      key,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      activated: false,
+      handle,
+      timerId: window.setTimeout(() => {
+        const state = dragStateRef.current;
+        if (!state || state.key !== key) return;
+        state.activated = true;
+        setDraggingKey(key);
+        setDropTargetKey(key);
+        try {
+          state.handle.setPointerCapture(state.pointerId);
+        } catch {
+          // Pointer capture can fail if the pointer was already released.
+        }
+      }, 450)
+    };
+  };
+
+  const moveSchedulePress = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const state = dragStateRef.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+
+    event.stopPropagation();
+    const deltaX = event.clientX - state.startX;
+    const deltaY = event.clientY - state.startY;
+
+    if (!state.activated && Math.hypot(deltaX, deltaY) > 8) {
+      window.clearTimeout(state.timerId);
+      dragStateRef.current = null;
+      setPressedKey(null);
+      return;
+    }
+
+    if (!state.activated || !onScheduleOrderChange) return;
+
+    event.preventDefault();
+    const target = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>('[data-schedule-key]')
+      ?.dataset.scheduleKey;
+
+    if (!target) return;
+    setDropTargetKey(target);
+    if (target === state.key) return;
+
+    const nextOrder = moveScheduleKey(orderedKeysRef.current, state.key, target);
+    orderedKeysRef.current = nextOrder;
+    onScheduleOrderChange(nextOrder);
+  };
+
+  const endSchedulePress = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const state = dragStateRef.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+
+    event.stopPropagation();
+    window.clearTimeout(state.timerId);
+
+    if (state.activated) {
+      suppressClickRef.current = state.key;
+      window.setTimeout(() => {
+        if (suppressClickRef.current === state.key) suppressClickRef.current = null;
+      }, 120);
+    }
+
+    try {
+      state.handle.releasePointerCapture(state.pointerId);
+    } catch {
+      // Ignore release failures when the pointer was not captured.
+    }
+
+    dragStateRef.current = null;
+    setPressedKey(null);
+    setDraggingKey(null);
+    setDropTargetKey(null);
+  };
+
+  const resetScheduleOrder = () => {
+    onScheduleOrderChange?.([]);
+  };
+
+  const completedCount = orderedSchedule.filter((s) => {
+    const resolved = resolveMatch(s.match, allMatches);
+    return Boolean(s.match.result || resolved.autoWinnerId);
+  }).length;
   const matColors = ['var(--accent)', 'var(--positive)', 'var(--warn)', '#6b8ec8', '#9b6bb5', '#5bbfbf'];
 
   return (
@@ -2426,10 +2594,21 @@ function ScheduleView({
         <div className="schedule-toolbar-left">
           <CalendarClock size={16} />
           <span className="schedule-toolbar-title">Match Schedule</span>
-          <span className="chip mono">{schedule.length} matches</span>
+          <span className="chip mono">{orderedSchedule.length} matches</span>
           <span className="chip chip-done dot">{completedCount} done</span>
         </div>
         <div className="schedule-toolbar-right">
+          {canReorder && (
+            <button
+              className="icon-btn"
+              type="button"
+              title="Reset schedule order"
+              onClick={resetScheduleOrder}
+              disabled={!hasCustomOrder}
+            >
+              <RotateCcw size={14} />
+            </button>
+          )}
           <label className="mat-control">
             <span className="lbl-up">Mats</span>
             <div className="mat-stepper">
@@ -2463,23 +2642,26 @@ function ScheduleView({
       )}
 
       <div className="schedule-list">
-        {schedule.map((s, idx) => {
-          const prev = idx > 0 ? schedule[idx - 1] : null;
+        {orderedSchedule.map((s, idx) => {
+          const key = scheduleEntryKey(s);
+          const prev = idx > 0 ? orderedSchedule[idx - 1] : null;
           const showFinalSep = s.tag && (!prev || prev.tag !== s.tag);
-          const resolved = resolveMatch(s.match, activeDivisions.flatMap((d) => d.bracket!.matches));
+          const resolved = resolveMatch(s.match, allMatches);
           const aName = resolved.slotA.competitorId
             ? competitorById.get(resolved.slotA.competitorId)?.name ?? resolved.slotA.label
             : resolved.slotA.label;
           const bName = resolved.slotB.competitorId
             ? competitorById.get(resolved.slotB.competitorId)?.name ?? resolved.slotB.label
             : resolved.slotB.label;
-          const isDone = !!s.match.result;
-          const winnerName = s.match.result?.winnerId
-            ? competitorById.get(s.match.result.winnerId)?.name
+          const winnerId = s.match.result?.winnerId ?? resolved.autoWinnerId;
+          const isAutoDone = !s.match.result && Boolean(resolved.autoWinnerId);
+          const isDone = Boolean(s.match.result || resolved.autoWinnerId);
+          const winnerName = winnerId
+            ? competitorById.get(winnerId)?.name
             : undefined;
 
           return (
-            <div key={s.match.id}>
+            <div key={key}>
               {showFinalSep && (
                 <div className="schedule-sep">
                   <span className="schedule-sep-line" />
@@ -2490,10 +2672,31 @@ function ScheduleView({
                 </div>
               )}
               <div
-                className={`schedule-row${isDone ? ' done' : ''}${s.tag ? ` ${s.tag}` : ''}`}
+                className={`schedule-row${isDone ? ' done' : ''}${s.tag ? ` ${s.tag}` : ''}${canReorder ? ' reorder-enabled' : ''}${pressedKey === key ? ' pressing' : ''}${draggingKey === key ? ' dragging' : ''}${dropTargetKey === key && draggingKey !== key ? ' drop-target' : ''}`}
+                data-schedule-key={key}
                 onClick={() => onNavigateToMatch(s.divisionId, s.match.id)}
               >
-                <span className="schedule-order mono">{s.order}</span>
+                {canReorder && (
+                  <button
+                    className="schedule-drag-handle"
+                    type="button"
+                    title="Move match"
+                    aria-label="Move match"
+                    onPointerDown={(event) => beginSchedulePress(event, key)}
+                    onPointerMove={moveSchedulePress}
+                    onPointerUp={endSchedulePress}
+                    onPointerCancel={endSchedulePress}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (suppressClickRef.current === key) {
+                        event.preventDefault();
+                      }
+                    }}
+                  >
+                    <GripVertical size={14} />
+                  </button>
+                )}
+                <span className="schedule-order mono">{idx + 1}</span>
                 <span
                   className="schedule-mat mono"
                   style={{ background: matColors[(s.mat - 1) % matColors.length] }}
@@ -2503,16 +2706,16 @@ function ScheduleView({
                 <span className="schedule-div">{s.divisionName}</span>
                 <span className="schedule-label mono">{s.match.label}</span>
                 <div className="schedule-matchup">
-                  <span className={isDone && s.match.result?.winnerId === resolved.slotA.competitorId ? 'schedule-winner' : ''}>{aName}</span>
+                  <span className={isDone && winnerId === resolved.slotA.competitorId ? 'schedule-winner' : ''}>{aName}</span>
                   <span className="schedule-vs">vs</span>
-                  <span className={isDone && s.match.result?.winnerId === resolved.slotB.competitorId ? 'schedule-winner' : ''}>{bName}</span>
+                  <span className={isDone && winnerId === resolved.slotB.competitorId ? 'schedule-winner' : ''}>{bName}</span>
                 </div>
                 <div className="schedule-result">
                   {isDone ? (
                     <>
                       <CheckCircle2 size={12} />
-                      <span className="schedule-winner-name">{winnerName}</span>
-                      <span className="schedule-method mono">{s.match.result?.method}</span>
+                      <span className="schedule-winner-name">{winnerName ?? 'Auto winner'}</span>
+                      <span className="schedule-method mono">{isAutoDone ? 'Bye' : s.match.result?.method}</span>
                     </>
                   ) : (
                     <span className="chip chip-pending dot">pending</span>
@@ -2525,6 +2728,21 @@ function ScheduleView({
       </div>
     </div>
   );
+}
+
+function scheduleEntryKey(entry: ScheduledMatch): string {
+  return `${entry.divisionId}:${entry.match.id}`;
+}
+
+function moveScheduleKey(keys: string[], activeKey: string, targetKey: string): string[] {
+  const activeIndex = keys.indexOf(activeKey);
+  const targetIndex = keys.indexOf(targetKey);
+  if (activeIndex < 0 || targetIndex < 0 || activeIndex === targetIndex) return keys;
+
+  const nextKeys = [...keys];
+  const [active] = nextKeys.splice(activeIndex, 1);
+  nextKeys.splice(targetIndex, 0, active);
+  return nextKeys;
 }
 
 /* ── Results View ── */

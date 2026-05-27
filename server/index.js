@@ -238,6 +238,8 @@ function isTournamentState(value) {
     typeof value.eventName === 'string' &&
     Array.isArray(value.competitors) &&
     Array.isArray(value.divisions) &&
+    (value.scheduleOrder === undefined ||
+      (Array.isArray(value.scheduleOrder) && value.scheduleOrder.every((key) => typeof key === 'string'))) &&
     typeof value.updatedAt === 'string'
   );
 }

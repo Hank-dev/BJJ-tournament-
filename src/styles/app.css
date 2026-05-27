@@ -700,6 +700,7 @@ select.input {
   border: 1px solid var(--divider);
   border-radius: 5px;
   overflow: hidden;
+  container-type: inline-size;
 }
 .match-card.complete { border-color: rgba(107,158,107,0.4); }
 .match-card.highlighted {
@@ -779,8 +780,15 @@ select.input {
 }
 .result-form .field-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
+}
+.result-form .field-label {
+  min-width: 0;
+}
+.result-form .input {
+  width: 100%;
+  min-width: 0;
 }
 .result-form .field-wide { grid-column: 1 / -1; }
 .result-form .form-actions {
@@ -788,6 +796,12 @@ select.input {
   gap: 6px;
   justify-content: flex-end;
   padding-top: 4px;
+}
+
+@container (max-width: 320px) {
+  .result-form .field-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Slot editing ── */
@@ -1227,6 +1241,19 @@ select.input {
 }
 .schedule-row:last-child { border-bottom: 0; }
 .schedule-row:hover { background: var(--hover); }
+.schedule-row.reorder-enabled {
+  cursor: pointer;
+}
+.schedule-row.pressing,
+.schedule-row.dragging {
+  background: var(--hover);
+}
+.schedule-row.dragging {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.schedule-row.drop-target {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
 .schedule-row.done { opacity: 0.55; }
 .schedule-row.done:hover { opacity: 0.8; }
 .schedule-row.gold-final { background: rgba(200, 149, 61, 0.06); }
@@ -1235,6 +1262,30 @@ select.input {
 .schedule-row.bronze-final:hover { background: rgba(160, 112, 90, 0.12); }
 .schedule-row.done.gold-final,
 .schedule-row.done.bronze-final { opacity: 0.7; }
+
+.schedule-drag-handle {
+  width: 22px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--muted-soft);
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.schedule-drag-handle:hover,
+.schedule-drag-handle:focus-visible {
+  color: var(--text);
+  background: var(--hover);
+  outline: none;
+}
+.schedule-row.dragging .schedule-drag-handle {
+  color: var(--accent-strong);
+  cursor: grabbing;
+}
 
 .schedule-order {
   width: 24px;
@@ -1509,24 +1560,79 @@ select.input {
   .auth-app { display: block; }
   .auth-shell { padding: 24px 14px; }
   .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
     width: 100%;
-    flex: 0 0 auto;
+    height: calc(64px + env(safe-area-inset-bottom));
+    flex: none;
     flex-direction: row;
-    padding: 0;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     border-right: none;
-    border-bottom: 1px solid var(--divider);
+    border-top: 1px solid var(--divider);
+    border-bottom: 0;
     overflow-x: auto;
+    overflow-y: hidden;
+    box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.28);
   }
   .sb-brand, .sb-tournament, .sb-foot { display: none; }
   .sb-nav {
     flex-direction: row;
-    padding: 4px 8px;
+    padding: 0;
     gap: 2px;
-    flex: 1;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
+  .sb-nav::-webkit-scrollbar { display: none; }
   .sb-nav .group-lbl { display: none; }
   .sb-item.active::before { display: none; }
-  .sb-item { padding: 6px 10px; font-size: 11px; }
+  .sb-item {
+    flex: 0 0 72px;
+    height: 52px;
+    justify-content: center;
+    flex-direction: column;
+    gap: 3px;
+    padding: 5px 6px;
+    font-size: 10px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .sb-item.active {
+    color: var(--text-strong);
+    box-shadow: inset 0 2px 0 var(--accent);
+  }
+  .sb-item .ic {
+    width: 16px;
+    height: 16px;
+    flex-basis: 16px;
+  }
+  .sb-item .ic svg {
+    width: 16px;
+    height: 16px;
+  }
+  .sb-item > span:not(.ic):not(.count) {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sb-item .count {
+    position: absolute;
+    top: 5px;
+    right: 7px;
+    margin-left: 0;
+    font-size: 9px;
+  }
+  .main {
+    height: 100%;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+  .topbar { padding: 0 12px; }
+  .content { padding: 12px; }
   .entry-bar { flex-wrap: wrap; }
   .division-row { flex-wrap: wrap; }
   .division-row .name-col, .division-row .progress-col { width: 100%; }

@@ -75,6 +75,7 @@ export interface TournamentState {
   eventName: string;
   competitors: Competitor[];
   divisions: Division[];
+  scheduleOrder?: string[];
   updatedAt: string;
 }
 

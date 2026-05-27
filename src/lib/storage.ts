@@ -107,6 +107,9 @@ export function isTournamentState(value: unknown): value is TournamentState {
     typeof candidate.eventName === 'string' &&
     Array.isArray(candidate.competitors) &&
     Array.isArray(candidate.divisions) &&
+    (candidate.scheduleOrder === undefined ||
+      (Array.isArray(candidate.scheduleOrder) &&
+        candidate.scheduleOrder.every((key) => typeof key === 'string'))) &&
     typeof candidate.updatedAt === 'string'
   );
 }
