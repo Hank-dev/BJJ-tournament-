@@ -72,6 +72,7 @@ import type {
   Competitor,
   Division,
   Match,
+  MatchResult,
   MatchSlot,
   Ruleset,
   SlotSide,
@@ -937,7 +938,10 @@ function EntryScreen({
   };
 
   return (
-    <div className={`app auth-app ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
+    <div
+      className={`app auth-app ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}
+      style={{ '--auth-background-image': 'url("/entry-background.jpg")' } as React.CSSProperties}
+    >
       <main className="auth-shell">
         <section className="auth-hero">
           <div className="sb-mark auth-mark">BJJ</div>
@@ -1304,6 +1308,7 @@ function ReadOnlyMatchCard({
     : resolved.autoWinnerId
       ? competitorById.get(resolved.autoWinnerId)?.name ?? 'Unknown'
       : undefined;
+  const resultMethod = formatResultMethod(match.result);
 
   useEffect(() => {
     if (highlighted && cardRef.current) {
@@ -1329,7 +1334,7 @@ function ReadOnlyMatchCard({
         <div className="winner-line">
           <CheckCircle2 size={14} />
           <span>{winnerName}</span>
-          {match.result?.method && <em>{match.result.method}</em>}
+          {resultMethod && <em title={resultMethod}>{resultMethod}</em>}
         </div>
       )}
     </article>
@@ -2155,6 +2160,7 @@ function MatchCardComponent({
     : resolved.autoWinnerId
       ? competitorById.get(resolved.autoWinnerId)?.name ?? 'Unknown'
       : undefined;
+  const resultMethod = formatResultMethod(match.result);
 
   const save = () => {
     if (!winnerId || !method) return;
@@ -2237,7 +2243,7 @@ function MatchCardComponent({
         <div className="winner-line">
           <CheckCircle2 size={14} />
           <span>{winnerName}</span>
-          {match.result?.method && <em>{match.result.method}</em>}
+          {resultMethod && <em title={resultMethod}>{resultMethod}</em>}
         </div>
       )}
 
@@ -2659,6 +2665,7 @@ function ScheduleView({
           const winnerName = winnerId
             ? competitorById.get(winnerId)?.name
             : undefined;
+          const resultMethod = formatResultMethod(s.match.result);
 
           return (
             <div key={key}>
@@ -2715,7 +2722,9 @@ function ScheduleView({
                     <>
                       <CheckCircle2 size={12} />
                       <span className="schedule-winner-name">{winnerName ?? 'Auto winner'}</span>
-                      <span className="schedule-method mono">{isAutoDone ? 'Bye' : s.match.result?.method}</span>
+                      <span className="schedule-method mono" title={isAutoDone ? 'Bye' : resultMethod}>
+                        {isAutoDone ? 'Bye' : resultMethod}
+                      </span>
                     </>
                   ) : (
                     <span className="chip chip-pending dot">pending</span>
@@ -2743,6 +2752,12 @@ function moveScheduleKey(keys: string[], activeKey: string, targetKey: string): 
   const [active] = nextKeys.splice(activeIndex, 1);
   nextKeys.splice(targetIndex, 0, active);
   return nextKeys;
+}
+
+function formatResultMethod(result?: MatchResult): string | undefined {
+  if (!result?.method) return undefined;
+  const submissionType = result.submissionType?.trim();
+  return submissionType ? `${result.method} - ${submissionType}` : result.method;
 }
 
 /* ── Results View ── */

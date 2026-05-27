@@ -82,6 +82,17 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   min-height: 100%;
   display: block;
   overflow: auto;
+  position: relative;
+  background:
+    var(--auth-background-image, none) center / cover no-repeat,
+    var(--bg);
+}
+.auth-app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(128, 128, 128, 0.5);
+  pointer-events: none;
 }
 .auth-shell {
   min-height: 100%;
@@ -91,6 +102,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   align-items: center;
   justify-content: center;
   padding: 40px 24px;
+  position: relative;
+  z-index: 1;
 }
 .auth-hero {
   display: flex;
@@ -758,6 +771,7 @@ select.input {
 .winner-line {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 7px;
   padding: 8px 10px;
   border-top: 1px solid var(--divider);
@@ -767,7 +781,14 @@ select.input {
   background: var(--bg);
 }
 .winner-line svg { width: 14px; height: 14px; }
-.winner-line em { font-style: normal; color: var(--muted); font-weight: 400; font-size: 11px; }
+.winner-line em {
+  min-width: 0;
+  font-style: normal;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
 
 /* ── Result form ── */
 .result-form {
