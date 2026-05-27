@@ -953,30 +953,37 @@ function EntryScreen({
         </section>
 
         <section className="auth-grid">
-          <form className="panel auth-panel admin-auth-panel" onSubmit={submit}>
-            <div className="panel-hd">
-              <Lock size={15} />
-              <span className="t">{adminPasscodeConfigured ? 'Admin' : 'Create admin passcode'}</span>
-            </div>
-            <div className="auth-panel-body">
-              <div className="field-label">
-                <span className="lbl">Passcode</span>
-                <input
-                  className="input"
-                  type="password"
-                  value={passcode}
-                  onChange={(event) => setPasscode(event.target.value)}
-                  autoComplete="current-password"
-                  disabled={isSubmitting}
-                />
+          <div className="auth-admin-stack">
+            <img
+              className="auth-admin-logo"
+              src="/ntnui-jiu-jitsu-logo.jpg"
+              alt="NTNUI Jiu-Jitsu"
+            />
+            <form className="panel auth-panel admin-auth-panel" onSubmit={submit}>
+              <div className="panel-hd">
+                <Lock size={15} />
+                <span className="t">{adminPasscodeConfigured ? 'Admin' : 'Create admin passcode'}</span>
               </div>
-              {error && <div className="auth-error">{error}</div>}
-              <button className="btn primary" type="submit" disabled={isSubmitting}>
-                <span className="ic"><Lock size={13} /></span>
-                {adminPasscodeConfigured ? 'Log in' : 'Create login'}
-              </button>
-            </div>
-          </form>
+              <div className="auth-panel-body">
+                <div className="field-label">
+                  <span className="lbl">Passcode</span>
+                  <input
+                    className="input"
+                    type="password"
+                    value={passcode}
+                    onChange={(event) => setPasscode(event.target.value)}
+                    autoComplete="current-password"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                {error && <div className="auth-error">{error}</div>}
+                <button className="btn primary" type="submit" disabled={isSubmitting}>
+                  <span className="ic"><Lock size={13} /></span>
+                  {adminPasscodeConfigured ? 'Log in' : 'Create login'}
+                </button>
+              </div>
+            </form>
+          </div>
 
           <section className="panel auth-panel">
             <div className="panel-hd">
