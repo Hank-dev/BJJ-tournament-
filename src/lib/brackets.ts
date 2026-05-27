@@ -509,6 +509,11 @@ export function getPlacements(
     return competitorIds.length === 1 ? { gold: competitorIds[0] } : {};
   }
 
+  const realMatches = bracket.matches.filter((match) => !isByeMatch(match));
+  if (realMatches.length > 0 && realMatches.some((match) => !match.result)) {
+    return {};
+  }
+
   if (format === 'round-robin') {
     const standings = computeRoundRobinStandings(competitorIds, bracket.matches);
     return {

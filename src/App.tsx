@@ -39,6 +39,7 @@ import {
   generateBracketForDivision,
   getMatchWinnerId,
   getPlacements,
+  isByeMatch,
   makeByeSlot,
   makeCompetitorSlot,
   makeSourceSlot,
@@ -953,37 +954,30 @@ function EntryScreen({
         </section>
 
         <section className="auth-grid">
-          <div className="auth-admin-stack">
-            <img
-              className="auth-admin-logo"
-              src="/ntnui-jiu-jitsu-logo.jpg"
-              alt="NTNUI Jiu-Jitsu"
-            />
-            <form className="panel auth-panel admin-auth-panel" onSubmit={submit}>
-              <div className="panel-hd">
-                <Lock size={15} />
-                <span className="t">{adminPasscodeConfigured ? 'Admin' : 'Create admin passcode'}</span>
+          <form className="panel auth-panel admin-auth-panel" onSubmit={submit}>
+            <div className="panel-hd">
+              <Lock size={15} />
+              <span className="t">{adminPasscodeConfigured ? 'Admin' : 'Create admin passcode'}</span>
+            </div>
+            <div className="auth-panel-body">
+              <div className="field-label">
+                <span className="lbl">Passcode</span>
+                <input
+                  className="input"
+                  type="password"
+                  value={passcode}
+                  onChange={(event) => setPasscode(event.target.value)}
+                  autoComplete="current-password"
+                  disabled={isSubmitting}
+                />
               </div>
-              <div className="auth-panel-body">
-                <div className="field-label">
-                  <span className="lbl">Passcode</span>
-                  <input
-                    className="input"
-                    type="password"
-                    value={passcode}
-                    onChange={(event) => setPasscode(event.target.value)}
-                    autoComplete="current-password"
-                    disabled={isSubmitting}
-                  />
-                </div>
-                {error && <div className="auth-error">{error}</div>}
-                <button className="btn primary" type="submit" disabled={isSubmitting}>
-                  <span className="ic"><Lock size={13} /></span>
-                  {adminPasscodeConfigured ? 'Log in' : 'Create login'}
-                </button>
-              </div>
-            </form>
-          </div>
+              {error && <div className="auth-error">{error}</div>}
+              <button className="btn primary" type="submit" disabled={isSubmitting}>
+                <span className="ic"><Lock size={13} /></span>
+                {adminPasscodeConfigured ? 'Log in' : 'Create login'}
+              </button>
+            </div>
+          </form>
 
           <section className="panel auth-panel">
             <div className="panel-hd">
@@ -1609,8 +1603,9 @@ function DivisionsView({ competitors, divisions, onAdd, onUpdate, onDelete, onAs
       <div style={{ flex: 1, overflow: 'auto' }}>
         {divisions.map((division) => {
           const count = competitors.filter((c) => c.divisionId === division.id).length;
-          const matchCount = division.bracket?.matches.length ?? 0;
-          const doneCount = division.bracket?.matches.filter((m) => m.result).length ?? 0;
+          const realMatches = division.bracket?.matches.filter((match) => !isByeMatch(match)) ?? [];
+          const matchCount = realMatches.length;
+          const doneCount = realMatches.filter((m) => m.result).length;
           const status = division.bracket
             ? doneCount === matchCount && matchCount > 0 ? 'done' : 'live'
             : count >= 2 ? 'open' : 'pending';
@@ -2762,6 +2757,7 @@ interface DivisionResult {
   bronze?: Competitor;
   totalMatches: number;
   completedMatches: number;
+  allRealMatchesComplete: boolean;
   submissionKing?: { competitor: Competitor; count: number };
 }
 
@@ -2770,9 +2766,13 @@ function computeDivisionResults(
   competitorById: Map<string, Competitor>
 ): DivisionResult[] {
   return divisions.map((division) => {
-    const placements = getPlacements(division.format, division.competitorIds, division.bracket);
     const matches = division.bracket?.matches ?? [];
-    const completed = matches.filter((m) => m.result);
+    const realMatches = matches.filter((match) => !isByeMatch(match));
+    const completed = realMatches.filter((m) => m.result);
+    const allRealMatchesComplete = realMatches.length > 0 && completed.length === realMatches.length;
+    const placements = allRealMatchesComplete
+      ? getPlacements(division.format, division.competitorIds, division.bracket)
+      : {};
 
     const subCounts = new Map<string, number>();
     for (const m of completed) {
@@ -2793,8 +2793,9 @@ function computeDivisionResults(
       gold: placements.gold ? competitorById.get(placements.gold) : undefined,
       silver: placements.silver ? competitorById.get(placements.silver) : undefined,
       bronze: placements.bronze ? competitorById.get(placements.bronze) : undefined,
-      totalMatches: matches.length,
+      totalMatches: realMatches.length,
       completedMatches: completed.length,
+      allRealMatchesComplete,
       submissionKing,
     };
   });
@@ -2826,7 +2827,7 @@ function ResultsView({
 
   const totalSubs = results.reduce((sum, r) => {
     const matches = r.division.bracket?.matches ?? [];
-    return sum + matches.filter((m) => m.result && isSubmissionMethod(m.result.method)).length;
+    return sum + matches.filter((m) => !isByeMatch(m) && m.result && isSubmissionMethod(m.result.method)).length;
   }, 0);
   const totalCompleted = results.reduce((s, r) => s + r.completedMatches, 0);
   const totalMatches = results.reduce((s, r) => s + r.totalMatches, 0);

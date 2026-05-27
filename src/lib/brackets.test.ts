@@ -6,6 +6,7 @@ import {
   generateBracketForDivision,
   getMatchLoserId,
   getMatchWinnerId,
+  getPlacements,
   makeCompetitorSlot,
   resolveMatch,
   updateMatchSlot
@@ -65,6 +66,20 @@ describe('single elimination brackets', () => {
     bracket = applyMatchResult(bracket, 'main-r1-m1', 'a', 'Points', 'Armbar');
     expect(bracket.matches[0].result?.method).toBe('Points');
     expect(bracket.matches[0].result?.submissionType).toBeUndefined();
+  });
+
+  it('does not place winners until every real match is completed', () => {
+    let bracket = generateBracketForDivision('single-elimination', ['a', 'b', 'c']);
+    bracket = applyMatchResult(bracket, 'main-r1-m2', 'b', 'Points');
+
+    expect(getPlacements('single-elimination', ['a', 'b', 'c'], bracket)).toEqual({});
+
+    bracket = applyMatchResult(bracket, 'main-r2-m1', 'a', 'Submission');
+
+    expect(getPlacements('single-elimination', ['a', 'b', 'c'], bracket)).toEqual({
+      gold: 'a',
+      silver: 'b'
+    });
   });
 
   it('evicts a competitor from their old slot when swapped into a new one', () => {
