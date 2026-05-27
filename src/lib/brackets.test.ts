@@ -57,6 +57,16 @@ describe('single elimination brackets', () => {
     expect(bracket.matches.find((match) => match.id === 'main-r2-m1')?.result).toBeUndefined();
   });
 
+  it('clears stale submission type when a non-submission method is saved', () => {
+    let bracket = generateBracketForDivision('single-elimination', ['a', 'b']);
+    bracket = applyMatchResult(bracket, 'main-r1-m1', 'a', 'Submission', 'Armbar');
+    expect(bracket.matches[0].result?.submissionType).toBe('Armbar');
+
+    bracket = applyMatchResult(bracket, 'main-r1-m1', 'a', 'Points', 'Armbar');
+    expect(bracket.matches[0].result?.method).toBe('Points');
+    expect(bracket.matches[0].result?.submissionType).toBeUndefined();
+  });
+
   it('evicts a competitor from their old slot when swapped into a new one', () => {
     // Seeded layout: match1(a vs d), match2(b vs c)
     const bracket = generateBracketForDivision('single-elimination', ['a', 'b', 'c', 'd']);

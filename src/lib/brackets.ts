@@ -11,6 +11,7 @@ import type {
   Standing,
   TournamentFormat
 } from './types';
+import { isSubmissionMethod } from './rulesets';
 
 export function nextPowerOfTwo(value: number): number {
   if (value <= 1) return 1;
@@ -360,7 +361,7 @@ export function applyMatchResult(
     winnerId,
     loserId,
     method,
-    submissionType: submissionType?.trim() || undefined,
+    submissionType: isSubmissionMethod(method) ? submissionType?.trim() || undefined : undefined,
     notes: notes?.trim() || undefined,
     completedAt: new Date().toISOString()
   };

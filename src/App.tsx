@@ -2149,7 +2149,8 @@ function MatchCardComponent({
 
   const save = () => {
     if (!winnerId || !method) return;
-    onSaveResult(division.id, match.id, winnerId, method, submissionType, notes);
+    const nextSubmissionType = isSubmissionMethod(method) ? submissionType.trim() : undefined;
+    onSaveResult(division.id, match.id, winnerId, method, nextSubmissionType, notes);
     setIsResultFormOpen(false);
   };
 
