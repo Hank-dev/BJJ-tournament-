@@ -988,89 +988,193 @@ function EntryScreen({
     }
   };
 
-  return (
-    <div
-      className={`app auth-app ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}
-      style={{ '--auth-background-image': 'url("/entry-background.jpg")' } as React.CSSProperties}
-    >
-      <main className="auth-shell">
-        <section className="auth-hero">
-          <h1>NTNUI Jiu-Jitsu</h1>
-          <p>In house tournament</p>
-          <button className="btn sm" type="button" onClick={onThemeToggle}>
-            <span className="ic">{theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}</span>
-            Theme
-          </button>
-        </section>
+  const totalDivisions = tournaments.reduce((sum, r) => sum + r.tournament.divisions.length, 0);
+  const totalCompetitors = tournaments.reduce((sum, r) => sum + r.tournament.competitors.length, 0);
 
-        <section className="auth-grid">
-          <form className="panel auth-panel admin-auth-panel" onSubmit={submit}>
-            <div className="panel-hd">
-              <Lock size={15} />
-              <span className="t">Admin log in</span>
+  const formatTournamentMeta = (record: TournamentStore['tournaments'][number]) => {
+    const t = record.tournament;
+    const matches = t.divisions.reduce((sum, d) => sum + (d.bracket?.matches.length ?? 0), 0);
+    const done = t.divisions.reduce((sum, d) => sum + (d.bracket?.matches.filter((m) => m.result).length ?? 0), 0);
+    const hasBracket = t.divisions.some((d) => d.bracket);
+    const allDone = matches > 0 && done === matches;
+    const isLive = hasBracket && !allDone && done > 0;
+    return { matches, done, hasBracket, allDone, isLive };
+  };
+
+  const getStatus = (record: TournamentStore['tournaments'][number]) => {
+    const m = formatTournamentMeta(record);
+    if (m.allDone) return { label: 'complete', cls: 'done' as const };
+    if (m.isLive) return { label: 'live', cls: 'live' as const };
+    if (m.hasBracket) return { label: 'ready', cls: 'scheduled' as const };
+    return { label: 'draft', cls: 'draft' as const };
+  };
+
+  const today = new Date();
+  const dateStr = `${String(today.getDate()).padStart(2, '0')}·${String(today.getMonth() + 1).padStart(2, '0')}·${today.getFullYear()}`;
+  const timeStr = today.toLocaleString('en-US', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()
+    + ' · ' + today.toTimeString().slice(0, 5);
+
+  return (
+    <div className={`landing-page ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
+      <div className="bg">
+        <img src="/landing-photo.jpg" alt="" />
+        <div className="bg-grid" />
+      </div>
+
+      <header className="top">
+        <div className="brand">
+          <div className="mark">BJJ</div>
+          <div className="wordmark">
+            NTNUI · Jiu-Jitsu<span className="sub mono">EST '78 · TRONDHEIM, NO</span>
+          </div>
+        </div>
+        <span className="spacer" />
+        <div className="meta">
+          <span><span className="dot" /> Mat system online · 2 active</span>
+          <span>{timeStr}</span>
+        </div>
+        <button className="theme-btn" type="button" onClick={onThemeToggle}>
+          {theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
+          Theme
+        </button>
+      </header>
+
+      <main className="hero">
+        <div className="title-block">
+          <div className="kicker">
+            <span className="sq" />
+            <span>Edition 26 · Spring season</span>
+            <span className="sep">/</span>
+            <span>NTNUI BJJ · Public registry</span>
+          </div>
+
+          <h1 className="title">
+            NTNUI<br />
+            Jiu-Jitsu<span className="alt"> Open.</span>
+          </h1>
+
+          <div className="rule" />
+
+          <p className="lede">
+            The semi-annual in-house tournament for active club members. <span className="em">Gi &amp; No-Gi divisions</span>, mixed belt categories, points · submission-only · EBI rulesets, run on two mats by a single operator.
+          </p>
+
+          <div className="stat-strip">
+            <div className="stat">
+              <span className="lbl">Date</span>
+              <span className="val mono">{dateStr}</span>
             </div>
-            <div className="auth-panel-body">
-              <div className="field-label">
-                <span className="lbl">Passcode</span>
-                <input
-                  className="input"
-                  type="password"
-                  value={passcode}
-                  onChange={(event) => setPasscode(event.target.value)}
-                  autoComplete="current-password"
-                  disabled={isSubmitting}
-                />
-              </div>
-              {error && <div className="auth-error">{error}</div>}
-              <button className="btn primary" type="submit" disabled={isSubmitting}>
-                <span className="ic"><Lock size={13} /></span>
-                Admin log in
-              </button>
+            <div className="stat">
+              <span className="lbl">Divisions</span>
+              <span className="val mono">{String(totalDivisions).padStart(2, '0')}</span>
             </div>
+            <div className="stat">
+              <span className="lbl">Competitors</span>
+              <span className="val mono">{totalCompetitors}</span>
+            </div>
+            <div className="stat">
+              <span className="lbl">Registration</span>
+              <span className="val chip-l dot live">open</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="cards">
+          <form className="card login-compact" onSubmit={submit}>
+            <Lock size={14} className="ic" />
+            <span className="lbl">Admin</span>
+            <input
+              className="pin-input mono"
+              type="password"
+              value={passcode}
+              onChange={(event) => setPasscode(event.target.value)}
+              placeholder="••••••"
+              maxLength={32}
+              autoComplete="current-password"
+              disabled={isSubmitting}
+            />
+            <span className="hint mono">{adminPasscodeConfigured ? 'PIN' : 'set PIN'}</span>
+            <span className="spacer" />
+            {error && <span className="err mono">{error}</span>}
+            <button className="btn-x primary" type="submit" disabled={isSubmitting}>
+              {adminPasscodeConfigured ? 'Unlock' : 'Set passcode'}
+            </button>
           </form>
 
-          <section className="panel auth-panel">
-            <div className="panel-hd">
-              <Eye size={15} />
-              <span className="t">Tournaments</span>
+          <section className="card" aria-label="Tournaments">
+            <div className="card-hd">
+              <Eye size={12} />
+              <span className="t">Public · Spectator view</span>
+              <span className="spacer" />
+              <span className="chip-l bare">{tournaments.length} tournament{tournaments.length !== 1 ? 's' : ''}</span>
             </div>
-            <div className="auth-panel-body">
-              {applicationNotice && <div className="notice success application-notice">{applicationNotice}</div>}
-              <div className="guest-tournament-list">
-                {tournaments.map((record) => (
-                  <div
-                    key={record.id}
-                    className={`guest-tournament-row${record.id === activeTournamentId ? ' active' : ''}`}
-                  >
-                    <div className="guest-tournament-main">
-                      <span className="guest-tournament-name">{record.tournament.eventName}</span>
-                      <span className="guest-tournament-meta">
-                        {record.tournament.divisions.length} divisions · {record.tournament.competitors.length} competitors
-                      </span>
+
+            {applicationNotice && (
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 11.5, color: 'var(--positive)' }}>
+                {applicationNotice}
+              </div>
+            )}
+
+            {tournaments.length === 0 && (
+              <div className="t-row" style={{ color: 'var(--muted)', justifyContent: 'center' }}>
+                <div className="t-name">
+                  <span className="name">No tournaments yet</span>
+                  <div className="meta">
+                    <span className="chip-l bare">Log in as admin to create one</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tournaments.map((record) => {
+              const status = getStatus(record);
+              const meta = formatTournamentMeta(record);
+              const t = record.tournament;
+              const isDim = status.cls === 'draft';
+              const code = `NTNUI · ${t.eventName.toUpperCase().replace(/\s+/g, '')}`;
+              return (
+                <div key={record.id} className={`t-row${isDim ? ' dim' : ''}`}>
+                  <div className="t-name">
+                    <div className="ln1">
+                      <span className="name">{t.eventName}</span>
+                      <span className="code mono">{code}</span>
                     </div>
-                    <div className="guest-tournament-actions">
-                      <button className="btn sm" type="button" onClick={() => onGuestSelect(record.id)}>
-                        <span className="ic"><Eye size={13} /></span>View
-                      </button>
-                      <button
-                        className="btn primary sm"
-                        type="button"
-                        onClick={() => {
-                          setApplicationNotice('');
-                          setApplicationTournamentId(record.id);
-                        }}
-                        disabled={!applicationsReady}
-                      >
-                        <span className="ic"><UserPlus size={13} /></span>Apply
-                      </button>
+                    <div className="meta">
+                      <span className={`chip-l dot ${status.cls}`}>{status.label}</span>
+                      <span className="chip-l">{t.divisions.length} division{t.divisions.length !== 1 ? 's' : ''}</span>
+                      <span className="chip-l">{t.competitors.length} competitor{t.competitors.length !== 1 ? 's' : ''}</span>
+                      {meta.matches > 0 && <span className="chip-l">{meta.done} / {meta.matches} matches</span>}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="t-actions">
+                    <button className="btn-x" type="button" onClick={() => onGuestSelect(record.id)}>
+                      View brackets
+                    </button>
+                    <button
+                      className="btn-x primary"
+                      type="button"
+                      onClick={() => {
+                        setApplicationNotice('');
+                        setApplicationTournamentId(record.id);
+                      }}
+                      disabled={!applicationsReady}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </section>
-        </section>
+        </div>
       </main>
+
+      <footer className="foot mono">
+        <span><span className="dot-status" />BJJ TOURNAMENT v0.1 · LOCAL-FIRST · UNAUTHENTICATED</span>
+        <span className="spacer" />
+        <span>AUTOSAVED · LIVE</span>
+      </footer>
+
       {applicationTournament && (
         <TournamentApplicationModal
           tournament={applicationTournament.tournament}
@@ -1478,7 +1582,7 @@ function ReadOnlyBracketBoard({
         }
 
         return (
-          <section className="stage-band" key={stage}>
+          <section className="stage-band bk-elim" key={stage}>
             <div className="stage-header">
               <h2>{stageLabel(stage)}</h2>
               <span className="stage-count">{stageMatches.length} matches</span>
@@ -2301,7 +2405,7 @@ function BracketBoard({
         }
 
         return (
-          <section className="stage-band" key={stage}>
+          <section className="stage-band bk-elim" key={stage}>
             <div className="stage-header">
               <h2>{stageLabel(stage)}</h2>
               <span className="stage-count">{stageMatches.length} matches</span>
