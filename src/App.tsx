@@ -1025,7 +1025,7 @@ function EntryScreen({
         <div className="brand">
           <div className="mark">BJJ</div>
           <div className="wordmark">
-            NTNUI · Jiu-Jitsu<span className="sub mono">EST '78 · TRONDHEIM, NO</span>
+            NTNUI · Jiu-Jitsu
           </div>
         </div>
         <span className="spacer" />
@@ -1043,7 +1043,6 @@ function EntryScreen({
         <div className="title-block">
           <div className="kicker">
             <span className="sq" />
-            <span>Edition 26 · Spring season</span>
             <span className="sep">/</span>
             <span>NTNUI BJJ · Public registry</span>
           </div>
