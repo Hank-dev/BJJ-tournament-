@@ -639,6 +639,13 @@ select.input {
   gap: 8px;
 }
 
+.seed-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
 .seed-list {
   display: flex;
   flex-direction: column;
@@ -1902,11 +1909,14 @@ select.input {
 .landing-page .top {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 14px;
-  padding: 0 20px;
+  min-height: 42px;
+  padding: 6px 20px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
   backdrop-filter: blur(8px);
   background: rgba(10,10,10,0.45);
+  box-sizing: border-box;
 }
 .landing-page.theme-light .top { background: rgba(246,245,241,0.55); border-bottom-color: rgba(0,0,0,0.06); }
 .landing-page .top .brand { display: flex; align-items: center; gap: 10px; }
@@ -2036,6 +2046,7 @@ select.input {
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.07);
   border-radius: 8px;
+  box-sizing: border-box;
   overflow: hidden;
 }
 .landing-page.theme-light .card { background: rgba(253,252,250,0.82); border-color: rgba(0,0,0,0.08); }
@@ -2054,8 +2065,13 @@ select.input {
 .landing-page .card-hd .spacer { flex: 1; }
 
 /* Compact login bar */
+.landing-page .admin-login-slot {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
 .landing-page .admin-login-minimized {
-  align-self: flex-end;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2082,9 +2098,16 @@ select.input {
 .landing-page .login-compact {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 8px;
+  max-width: min(100%, 560px);
+  padding: 5px 6px 5px 10px;
+  background: rgba(20,20,22,0.78);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  overflow: hidden;
 }
+.landing-page.theme-light .login-compact { background: rgba(253,252,250,0.82); border-color: rgba(0,0,0,0.08); }
 .landing-page .login-compact > svg { color: var(--muted); flex-shrink: 0; }
 .landing-page .login-compact .lbl {
   font-size: 10px;
@@ -2203,6 +2226,14 @@ select.input {
 }
 @media (max-width: 640px) {
   .landing-page .top .meta { display: none; }
+  .landing-page .admin-login-slot.is-open {
+    flex-basis: 100%;
+  }
+  .landing-page .admin-login-slot.is-open .login-compact {
+    justify-content: flex-end;
+    width: 100%;
+    flex-wrap: wrap;
+  }
   .landing-page .hero { padding: 36px 20px; }
   .landing-page .stat-strip { grid-template-columns: repeat(2, 1fr); }
   .landing-page .t-row { grid-template-columns: 1fr; }

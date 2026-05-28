@@ -1014,6 +1014,49 @@ function EntryScreen({
   const dateStr = `${String(today.getDate()).padStart(2, '0')}·${String(today.getMonth() + 1).padStart(2, '0')}·${today.getFullYear()}`;
   const timeStr = today.toLocaleString('en-US', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()
     + ' · ' + today.toTimeString().slice(0, 5);
+  const adminLoginControl = adminLoginOpen ? (
+    <form className="login-compact" onSubmit={submit}>
+      <Lock size={14} className="ic" />
+      <span className="lbl">Admin log in</span>
+      <input
+        className="pin-input mono"
+        type="password"
+        value={passcode}
+        onChange={(event) => setPasscode(event.target.value)}
+        placeholder="••••••"
+        maxLength={32}
+        autoComplete="current-password"
+        disabled={isSubmitting}
+        autoFocus
+      />
+      <span className="hint mono">{adminPasscodeConfigured ? 'PIN' : 'set PIN'}</span>
+      <span className="spacer" />
+      {error && <span className="err mono">{error}</span>}
+      <button className="btn-x primary" type="submit" disabled={isSubmitting}>
+        Log in
+      </button>
+      <button
+        className="btn-x"
+        type="button"
+        onClick={() => {
+          setAdminLoginOpen(false);
+          setError('');
+        }}
+        disabled={isSubmitting}
+      >
+        Close
+      </button>
+    </form>
+  ) : (
+    <button
+      className="admin-login-minimized"
+      type="button"
+      onClick={() => setAdminLoginOpen(true)}
+    >
+      <Lock size={12} />
+      Admin log in
+    </button>
+  );
 
   return (
     <div className={`landing-page ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
@@ -1038,6 +1081,9 @@ function EntryScreen({
           {theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
           Theme
         </button>
+        <div className={`admin-login-slot ${adminLoginOpen ? 'is-open' : ''}`}>
+          {adminLoginControl}
+        </div>
       </header>
 
       <main className="hero">
@@ -1080,50 +1126,6 @@ function EntryScreen({
         </div>
 
         <div className="cards">
-          {adminLoginOpen ? (
-            <form className="card login-compact" onSubmit={submit}>
-              <Lock size={14} className="ic" />
-              <span className="lbl">Admin log in</span>
-              <input
-                className="pin-input mono"
-                type="password"
-                value={passcode}
-                onChange={(event) => setPasscode(event.target.value)}
-                placeholder="••••••"
-                maxLength={32}
-                autoComplete="current-password"
-                disabled={isSubmitting}
-                autoFocus
-              />
-              <span className="hint mono">{adminPasscodeConfigured ? 'PIN' : 'set PIN'}</span>
-              <span className="spacer" />
-              {error && <span className="err mono">{error}</span>}
-              <button className="btn-x primary" type="submit" disabled={isSubmitting}>
-                Log in
-              </button>
-              <button
-                className="btn-x"
-                type="button"
-                onClick={() => {
-                  setAdminLoginOpen(false);
-                  setError('');
-                }}
-                disabled={isSubmitting}
-              >
-                Close
-              </button>
-            </form>
-          ) : (
-            <button
-              className="admin-login-minimized"
-              type="button"
-              onClick={() => setAdminLoginOpen(true)}
-            >
-              <Lock size={12} />
-              Admin log in
-            </button>
-          )}
-
           <section className="card" aria-label="Tournaments">
             <div className="card-hd">
               <Eye size={12} />
@@ -2207,6 +2209,7 @@ function BracketsView({
 }: BracketsViewProps) {
   const selectedDivision = divisions.find((division) => division.id === selectedDivisionId) ?? divisions[0];
   const [draggedSeedId, setDraggedSeedId] = useState<string>('');
+  const [seedToolsOpen, setSeedToolsOpen] = useState(true);
 
   if (!selectedDivision) {
     return (
@@ -2223,6 +2226,13 @@ function BracketsView({
     syncedDivision.competitorIds,
     syncedDivision.bracket
   );
+  const seedToolsId = `seed-tools-${syncedDivision.id}`;
+  const handleGenerateBracket = () => {
+    onGenerateBracket(syncedDivision.id);
+    if (syncedDivision.seedOrder.length >= 2) {
+      setSeedToolsOpen(false);
+    }
+  };
 
   return (
     <div className="bracket-layout">
@@ -2242,51 +2252,67 @@ function BracketsView({
           </div>
 
           <div className="sidebar-actions">
-            <button className="btn primary sm wide" type="button" onClick={() => onGenerateBracket(syncedDivision.id)}>
+            <button className="btn primary sm wide" type="button" onClick={handleGenerateBracket}>
               <span className="ic"><ListOrdered size={13} /></span>Generate
             </button>
-            <button className="btn sm wide" type="button" onClick={() => onShuffleSeeds(syncedDivision.id)} disabled={syncedDivision.seedOrder.length < 2}>
-              <span className="ic"><Shuffle size={13} /></span>Shuffle
+            <button
+              className="btn sm wide"
+              type="button"
+              aria-expanded={seedToolsOpen}
+              aria-controls={seedToolsId}
+              title={seedToolsOpen ? 'Hide seed order and shuffle controls' : 'Show seed order and shuffle controls'}
+              onClick={() => setSeedToolsOpen((open) => !open)}
+            >
+              <span className="ic">{seedToolsOpen ? <X size={13} /> : <ListOrdered size={13} />}</span>
+              {seedToolsOpen ? 'Minimize' : `Seeds (${syncedDivision.seedOrder.length})`}
             </button>
           </div>
 
-          <div className="seed-list">
-            <div className="seed-list-hd">
-              <span className="t">Seed order</span>
-              <span className="mono" style={{ fontSize: 10, color: 'var(--muted-soft)' }}>{syncedDivision.seedOrder.length}</span>
-            </div>
-            {syncedDivision.seedOrder.map((competitorId, index) => {
-              const competitor = competitorById.get(competitorId);
-              return (
-                <div
-                  className="seed-row"
-                  key={competitorId}
-                  draggable
-                  onDragStart={() => setDraggedSeedId(competitorId)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => onReorderSeed(syncedDivision.id, draggedSeedId, competitorId)}
-                >
-                  <span className="grip-icon"><GripVertical size={12} /></span>
-                  <span className="seed-num">{String(index + 1).padStart(2, '0')}</span>
-                  <div className="seed-info">
-                    <div className="seed-name">{competitor?.name ?? 'Unknown'}</div>
-                    {competitor?.team && <div className="seed-team">{competitor.team}</div>}
-                  </div>
-                  <div className="seed-controls">
-                    <button className="icon-btn" type="button" title="Move up" onClick={() => onMoveSeed(syncedDivision.id, competitorId, -1)} disabled={index === 0}>
-                      <ArrowUp size={12} />
-                    </button>
-                    <button className="icon-btn" type="button" title="Move down" onClick={() => onMoveSeed(syncedDivision.id, competitorId, 1)} disabled={index === syncedDivision.seedOrder.length - 1}>
-                      <ArrowDown size={12} />
-                    </button>
-                  </div>
+          {seedToolsOpen && (
+            <div className="seed-tools" id={seedToolsId}>
+              <button className="btn sm wide" type="button" onClick={() => onShuffleSeeds(syncedDivision.id)} disabled={syncedDivision.seedOrder.length < 2}>
+                <span className="ic"><Shuffle size={13} /></span>Shuffle athletes
+              </button>
+
+              <div className="seed-list">
+                <div className="seed-list-hd">
+                  <span className="t">Seed order</span>
+                  <span className="mono" style={{ fontSize: 10, color: 'var(--muted-soft)' }}>{syncedDivision.seedOrder.length}</span>
                 </div>
-              );
-            })}
-            {syncedDivision.seedOrder.length === 0 && (
-              <p style={{ color: 'var(--muted)', fontSize: 12, padding: '12px 0' }}>No competitors assigned.</p>
-            )}
-          </div>
+                {syncedDivision.seedOrder.map((competitorId, index) => {
+                  const competitor = competitorById.get(competitorId);
+                  return (
+                    <div
+                      className="seed-row"
+                      key={competitorId}
+                      draggable
+                      onDragStart={() => setDraggedSeedId(competitorId)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => onReorderSeed(syncedDivision.id, draggedSeedId, competitorId)}
+                    >
+                      <span className="grip-icon"><GripVertical size={12} /></span>
+                      <span className="seed-num">{String(index + 1).padStart(2, '0')}</span>
+                      <div className="seed-info">
+                        <div className="seed-name">{competitor?.name ?? 'Unknown'}</div>
+                        {competitor?.team && <div className="seed-team">{competitor.team}</div>}
+                      </div>
+                      <div className="seed-controls">
+                        <button className="icon-btn" type="button" title="Move up" onClick={() => onMoveSeed(syncedDivision.id, competitorId, -1)} disabled={index === 0}>
+                          <ArrowUp size={12} />
+                        </button>
+                        <button className="icon-btn" type="button" title="Move down" onClick={() => onMoveSeed(syncedDivision.id, competitorId, 1)} disabled={index === syncedDivision.seedOrder.length - 1}>
+                          <ArrowDown size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {syncedDivision.seedOrder.length === 0 && (
+                  <p style={{ color: 'var(--muted)', fontSize: 12, padding: '12px 0' }}>No competitors assigned.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
