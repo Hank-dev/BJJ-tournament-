@@ -1929,7 +1929,7 @@ select.input {
   mix-blend-mode: multiply;
 }
 
-.landing-page .top,
+.landing-page .top { position: relative; z-index: 10; }
 .landing-page .hero { position: relative; z-index: 5; }
 
 /* Top strip */
@@ -2214,13 +2214,46 @@ select.input {
   .landing-page .title { font-size: clamp(48px, 11vw, 84px); }
 }
 @media (max-width: 640px) {
+  .landing-page {
+    grid-template-rows: auto 1fr;
+  }
+  .landing-page .top {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .landing-page .top .brand {
+    min-width: 0;
+  }
   .landing-page .admin-login-slot.is-open {
     flex-basis: 100%;
+    justify-content: stretch;
   }
   .landing-page .admin-login-slot.is-open .login-compact {
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    justify-content: normal;
     width: 100%;
-    flex-wrap: wrap;
+    max-width: none;
+    padding: 8px;
+    overflow: visible;
+  }
+  .landing-page .admin-login-slot.is-open .login-compact > svg {
+    display: none;
+  }
+  .landing-page .admin-login-slot.is-open .login-compact .lbl {
+    grid-column: 1 / -1;
+  }
+  .landing-page .admin-login-slot.is-open .login-compact .pin-input {
+    width: 100%;
+    min-width: 0;
+  }
+  .landing-page .admin-login-slot.is-open .login-compact .hint,
+  .landing-page .admin-login-slot.is-open .login-compact .spacer {
+    display: none;
+  }
+  .landing-page .admin-login-slot.is-open .login-compact .err {
+    grid-column: 1 / -1;
   }
   .landing-page .hero { padding: 36px 20px; }
   .landing-page .stat-strip { grid-template-columns: repeat(2, 1fr); }
