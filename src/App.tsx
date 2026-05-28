@@ -1056,7 +1056,7 @@ function EntryScreen({
           <div className="rule" />
 
           <p className="lede">
-            The semi-annual in-house tournament for active club members. <span className="em">Gi &amp; No-Gi divisions</span>, mixed belt categories, points · submission-only · EBI rulesets, run on two mats by a single operator.
+            The semi-annual in-house tournament for active club members. No-Gi divisions, submission-only · EBI ruleset.
           </p>
 
           <div className="stat-strip">
