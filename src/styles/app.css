@@ -750,6 +750,94 @@ select.input {
   border-bottom: 1px solid var(--divider);
 }
 
+/* ── Horizontal bracket (main/bronze) ── */
+.bk-rounds {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  gap: 0;
+}
+.bk-round {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 240px;
+  max-width: 320px;
+}
+.bk-round-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  margin-bottom: 10px;
+  padding-right: 28px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.bk-round-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+.bk-round-leader {
+  flex: 1;
+  align-self: center;
+  border-top: 1px dotted var(--divider-strong);
+  min-width: 8px;
+}
+.bk-round-meta {
+  font-family: "Geist Mono", monospace;
+  font-size: 10px;
+  color: var(--muted-soft);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bk-round-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.bk-match-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6px 28px 6px 0;
+  position: relative;
+}
+/* horizontal exit line on the right of each match (except last column) */
+.bk-round:not(:last-child) .bk-match-wrap::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 28px;
+  height: 1px;
+  background: var(--divider-strong);
+}
+/* vertical pair connector — odd matches link downward, even matches link upward */
+.bk-round:not(:last-child) .bk-match-wrap:nth-child(odd of .bk-match-wrap)::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  bottom: 6px;
+  width: 1px;
+  background: var(--divider-strong);
+}
+.bk-round:not(:last-child) .bk-match-wrap:nth-child(even of .bk-match-wrap)::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 6px;
+  bottom: 50%;
+  width: 1px;
+  background: var(--divider-strong);
+}
+
 /* ── Match cards ── */
 .match-card {
   background: var(--bg);

@@ -1443,31 +1443,79 @@ function ReadOnlyBracketBoard({
       {stages.map((stage) => {
         const stageMatches = bracket.matches.filter((match) => match.stage === stage);
         const rounds = [...new Set(stageMatches.map((match) => match.round))].sort((a, b) => a - b);
+        const isElim = stage === 'main' || stage === 'bronze';
+        const maxRoundCount = Math.max(...rounds.map((r) => stageMatches.filter((m) => m.round === r).length));
+
+        if (!isElim) {
+          return (
+            <section className="stage-band" key={stage}>
+              <div className="stage-header">
+                <h2>{stageLabel(stage)}</h2>
+                <span className="stage-count">{stageMatches.length} matches</span>
+              </div>
+              <div className="rounds-grid">
+                {rounds.map((round) => (
+                  <div className="round-column" key={`${stage}-${round}`}>
+                    <h3>{roundLabel(round, rounds.length, stage)}</h3>
+                    {stageMatches
+                      .filter((match) => match.round === round)
+                      .sort((a, b) => a.position - b.position)
+                      .map((match) => (
+                        <ReadOnlyMatchCard
+                          key={match.id}
+                          match={match}
+                          matches={bracket.matches}
+                          competitorById={competitorById}
+                          highlighted={match.id === highlightedMatchId}
+                          onClearHighlight={onClearHighlight}
+                        />
+                      ))}
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        }
+
         return (
           <section className="stage-band" key={stage}>
             <div className="stage-header">
               <h2>{stageLabel(stage)}</h2>
               <span className="stage-count">{stageMatches.length} matches</span>
             </div>
-            <div className="rounds-grid">
-              {rounds.map((round) => (
-                <div className="round-column" key={`${stage}-${round}`}>
-                  <h3>{roundLabel(round, rounds.length, stage)}</h3>
-                  {stageMatches
-                    .filter((match) => match.round === round)
-                    .sort((a, b) => a.position - b.position)
-                    .map((match) => (
-                      <ReadOnlyMatchCard
-                        key={match.id}
-                        match={match}
-                        matches={bracket.matches}
-                        competitorById={competitorById}
-                        highlighted={match.id === highlightedMatchId}
-                        onClearHighlight={onClearHighlight}
-                      />
-                    ))}
-                </div>
-              ))}
+            <div className="bk-rounds" style={{ minHeight: `${maxRoundCount * 130}px` }}>
+              {rounds.map((round) => {
+                const rMatches = stageMatches
+                  .filter((m) => m.round === round)
+                  .sort((a, b) => a.position - b.position);
+                const isFinal = round === rounds[rounds.length - 1] && rounds.length > 1;
+                const finalDescriptor = stage === 'bronze' ? 'bronze' : 'gold/silver';
+                const metaText = isFinal && rMatches.length === 1
+                  ? `R${round} · ${finalDescriptor}`
+                  : `R${round} · ${rMatches.length} match${rMatches.length !== 1 ? 'es' : ''}`;
+                return (
+                  <div className="bk-round" key={`${stage}-${round}`}>
+                    <div className="bk-round-hd">
+                      <span className="bk-round-label">{roundLabel(round, rounds.length, stage)}</span>
+                      <span className="bk-round-leader" />
+                      <span className="bk-round-meta mono">{metaText}</span>
+                    </div>
+                    <div className="bk-round-body">
+                      {rMatches.map((match) => (
+                        <div className="bk-match-wrap" key={match.id}>
+                          <ReadOnlyMatchCard
+                            match={match}
+                            matches={bracket.matches}
+                            competitorById={competitorById}
+                            highlighted={match.id === highlightedMatchId}
+                            onClearHighlight={onClearHighlight}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         );
@@ -2214,35 +2262,87 @@ function BracketBoard({
       {stages.map((stage) => {
         const stageMatches = bracket.matches.filter((match) => match.stage === stage);
         const rounds = [...new Set(stageMatches.map((match) => match.round))].sort((a, b) => a - b);
+        const isElim = stage === 'main' || stage === 'bronze';
+        const maxRoundCount = Math.max(...rounds.map((r) => stageMatches.filter((m) => m.round === r).length));
+
+        if (!isElim) {
+          return (
+            <section className="stage-band" key={stage}>
+              <div className="stage-header">
+                <h2>{stageLabel(stage)}</h2>
+                <span className="stage-count">{stageMatches.length} matches</span>
+              </div>
+              <div className="rounds-grid">
+                {rounds.map((round) => (
+                  <div className="round-column" key={`${stage}-${round}`}>
+                    <h3>{roundLabel(round, rounds.length, stage)}</h3>
+                    {stageMatches
+                      .filter((match) => match.round === round)
+                      .sort((a, b) => a.position - b.position)
+                      .map((match) => (
+                        <MatchCardComponent
+                          key={match.id}
+                          division={division}
+                          bracket={bracket}
+                          match={match}
+                          competitorById={competitorById}
+                          onSaveResult={onSaveResult}
+                          onClearResult={onClearResult}
+                          onUpdateMatchSlot={onUpdateMatchSlot}
+                          highlighted={match.id === highlightedMatchId}
+                          onClearHighlight={onClearHighlight}
+                        />
+                      ))}
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        }
+
         return (
           <section className="stage-band" key={stage}>
             <div className="stage-header">
               <h2>{stageLabel(stage)}</h2>
               <span className="stage-count">{stageMatches.length} matches</span>
             </div>
-            <div className="rounds-grid">
-              {rounds.map((round) => (
-                <div className="round-column" key={`${stage}-${round}`}>
-                  <h3>{roundLabel(round, rounds.length, stage)}</h3>
-                  {stageMatches
-                    .filter((match) => match.round === round)
-                    .sort((a, b) => a.position - b.position)
-                    .map((match) => (
-                      <MatchCardComponent
-                        key={match.id}
-                        division={division}
-                        bracket={bracket}
-                        match={match}
-                        competitorById={competitorById}
-                        onSaveResult={onSaveResult}
-                        onClearResult={onClearResult}
-                        onUpdateMatchSlot={onUpdateMatchSlot}
-                        highlighted={match.id === highlightedMatchId}
-                        onClearHighlight={onClearHighlight}
-                      />
-                    ))}
-                </div>
-              ))}
+            <div className="bk-rounds" style={{ minHeight: `${maxRoundCount * 130}px` }}>
+              {rounds.map((round) => {
+                const rMatches = stageMatches
+                  .filter((m) => m.round === round)
+                  .sort((a, b) => a.position - b.position);
+                const isFinal = round === rounds[rounds.length - 1] && rounds.length > 1;
+                const finalDescriptor = stage === 'bronze' ? 'bronze' : 'gold/silver';
+                const metaText = isFinal && rMatches.length === 1
+                  ? `R${round} · ${finalDescriptor}`
+                  : `R${round} · ${rMatches.length} match${rMatches.length !== 1 ? 'es' : ''}`;
+                return (
+                  <div className="bk-round" key={`${stage}-${round}`}>
+                    <div className="bk-round-hd">
+                      <span className="bk-round-label">{roundLabel(round, rounds.length, stage)}</span>
+                      <span className="bk-round-leader" />
+                      <span className="bk-round-meta mono">{metaText}</span>
+                    </div>
+                    <div className="bk-round-body">
+                      {rMatches.map((match) => (
+                        <div className="bk-match-wrap" key={match.id}>
+                          <MatchCardComponent
+                            division={division}
+                            bracket={bracket}
+                            match={match}
+                            competitorById={competitorById}
+                            onSaveResult={onSaveResult}
+                            onClearResult={onClearResult}
+                            onUpdateMatchSlot={onUpdateMatchSlot}
+                            highlighted={match.id === highlightedMatchId}
+                            onClearHighlight={onClearHighlight}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         );
