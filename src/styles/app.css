@@ -717,6 +717,7 @@ select.input {
 .board-stack { display: flex; flex-direction: column; gap: 16px; }
 
 .stage-band {
+  --expanded-match-width: min(420px, calc(100vw - 64px));
   background: var(--surface);
   border: 1px solid var(--divider);
   border-radius: 6px;
@@ -751,6 +752,9 @@ select.input {
   overflow-x: auto;
   padding-bottom: 4px;
 }
+.rounds-grid:has(.match-card.expanded) {
+  grid-auto-columns: minmax(var(--expanded-match-width), var(--expanded-match-width));
+}
 
 .round-column { display: flex; flex-direction: column; gap: 8px; }
 .round-column h3 {
@@ -777,6 +781,11 @@ select.input {
   flex: 1 1 0;
   min-width: 240px;
   max-width: 320px;
+}
+.bk-round:has(.match-card.expanded) {
+  flex: 0 0 var(--expanded-match-width);
+  min-width: var(--expanded-match-width);
+  max-width: var(--expanded-match-width);
 }
 .bk-round-hd {
   display: flex;
@@ -821,6 +830,11 @@ select.input {
   padding: 6px 28px 6px 0;
   position: relative;
 }
+.bk-match-wrap:has(.match-card.expanded) {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  z-index: 4;
+}
 /* horizontal exit line on the right of each match (except last column) */
 .bk-round:not(:last-child) .bk-match-wrap::after {
   content: "";
@@ -858,6 +872,12 @@ select.input {
   border-radius: 5px;
   overflow: hidden;
   container-type: inline-size;
+}
+.match-card.expanded {
+  position: relative;
+  z-index: 5;
+  overflow: visible;
+  box-shadow: var(--inline-shadow);
 }
 .match-card.complete { border-color: rgba(107,158,107,0.4); }
 .match-card.highlighted {
@@ -981,6 +1001,14 @@ select.input {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+}
+@container (max-width: 360px) {
+  .slot-edit-grid {
+    grid-template-columns: 1fr;
+  }
+  .slot-edit-actions {
+    grid-column: 1;
+  }
 }
 
 /* ── Custom match builder ── */

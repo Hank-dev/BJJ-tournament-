@@ -2592,6 +2592,13 @@ function MatchCardComponent({
       ? competitorById.get(resolved.autoWinnerId)?.name ?? 'Unknown'
       : undefined;
   const resultMethod = formatResultMethod(match.result);
+  const isEditingResult = Boolean(match.result && isResultFormOpen);
+  const isCardExpanded = isEditingSlots || isEditingResult;
+
+  useEffect(() => {
+    if (!isCardExpanded || !cardRef.current) return;
+    cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [isCardExpanded]);
 
   const save = () => {
     if (!winnerId || !method) return;
@@ -2618,7 +2625,7 @@ function MatchCardComponent({
   };
 
   return (
-    <article ref={cardRef} className={`match-card${match.result ? ' complete' : ''}${highlighted ? ' highlighted' : ''}`}>
+    <article ref={cardRef} className={`match-card${match.result ? ' complete' : ''}${highlighted ? ' highlighted' : ''}${isCardExpanded ? ' expanded' : ''}`}>
       <div className="match-topline">
         <strong>{match.label}</strong>
         <div className="match-top-actions">
