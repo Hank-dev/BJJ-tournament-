@@ -863,6 +863,20 @@ function App() {
               </span>
             ))}
           </div>
+          <div className="mobile-tournament-switch">
+            <select
+              className="input sm"
+              value={tournamentStore.activeTournamentId}
+              onChange={(e) => selectTournament(e.target.value)}
+              aria-label="Select tournament"
+            >
+              {tournamentStore.tournaments.map((record) => (
+                <option key={record.id} value={record.id}>
+                  {record.tournament.eventName}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="spacer" />
           <div className="meta">
             <span className="save"><span className="dot" /> Saved</span>
@@ -1422,6 +1436,20 @@ function GuestApp({
               </span>
             ))}
           </div>
+          <div className="mobile-tournament-switch">
+            <select
+              className="input sm"
+              value={activeTournamentId}
+              onChange={(event) => onSelectTournament(event.target.value)}
+              aria-label="Select tournament"
+            >
+              {tournaments.map((record) => (
+                <option key={record.id} value={record.id}>
+                  {record.tournament.eventName}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="spacer" />
           <div className="meta">
             <span><Eye size={12} /> Guest</span>
@@ -1763,7 +1791,7 @@ function CompetitorsView({
   const unassignedCount = competitors.filter((c) => !c.divisionId).length;
 
   return (
-    <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="panel competitors-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="panel-hd">
         <span className="t">Competitors</span>
         <span className="chip mono">{competitors.length} total</span>
@@ -1807,8 +1835,8 @@ function CompetitorsView({
         <button className="btn primary sm" type="submit"><span className="ic"><Plus size={13} /></span>Add</button>
       </form>
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        <table className="tbl">
+      <div className="competitors-table-wrap">
+        <table className="tbl competitors-table">
           <thead>
             <tr>
               <SortableHeader label="Name" sortKey="name" sortState={sortState} onSort={toggleSort} />
@@ -1822,21 +1850,21 @@ function CompetitorsView({
           <tbody>
             {sortedCompetitors.map((competitor) => (
               <tr key={competitor.id}>
-                <td>
+                <td className="competitor-name-cell" data-label="Name">
                   <input
                     className="inline-input"
                     value={competitor.name}
                     onChange={(e) => onUpdateField(competitor.id, 'name', e.target.value)}
                   />
                 </td>
-                <td>
+                <td data-label="Weight">
                   <input
                     className="inline-input"
                     value={competitor.weightClass ?? ''}
                     onChange={(e) => onUpdateField(competitor.id, 'weightClass', e.target.value)}
                   />
                 </td>
-                <td>
+                <td data-label="Months">
                   <input
                     className="inline-input"
                     inputMode="numeric"
@@ -1844,14 +1872,14 @@ function CompetitorsView({
                     onChange={(e) => onUpdateField(competitor.id, 'monthsTrained', e.target.value)}
                   />
                 </td>
-                <td>
+                <td data-label="Gender">
                   <input
                     className="inline-input"
                     value={competitor.gender ?? ''}
                     onChange={(e) => onUpdateField(competitor.id, 'gender', e.target.value)}
                   />
                 </td>
-                <td>
+                <td data-label="Division">
                   <select
                     className="inline-select"
                     value={competitor.divisionId ?? ''}
@@ -1861,7 +1889,7 @@ function CompetitorsView({
                     {divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </td>
-                <td className="row-actions">
+                <td className="row-actions" data-label="">
                   <button className="icon-btn danger" type="button" title="Delete" onClick={() => onDelete(competitor.id)}>
                     <Trash2 />
                   </button>
@@ -1869,7 +1897,7 @@ function CompetitorsView({
               </tr>
             ))}
             {sortedCompetitors.length === 0 && (
-              <tr>
+              <tr className="empty-row">
                 <td colSpan={6} style={{ textAlign: 'center', padding: 26, color: 'var(--muted)' }}>
                   {filter ? 'No matches found.' : 'No competitors yet.'}
                 </td>
