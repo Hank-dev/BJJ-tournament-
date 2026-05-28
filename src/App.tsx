@@ -968,6 +968,7 @@ function EntryScreen({
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [adminLoginOpen, setAdminLoginOpen] = useState(false);
   const [applicationTournamentId, setApplicationTournamentId] = useState<string | null>(null);
   const [applicationNotice, setApplicationNotice] = useState('');
   const applicationTournament = tournaments.find((record) => record.id === applicationTournamentId);
@@ -1079,26 +1080,49 @@ function EntryScreen({
         </div>
 
         <div className="cards">
-          <form className="card login-compact" onSubmit={submit}>
-            <Lock size={14} className="ic" />
-            <span className="lbl">Admin</span>
-            <input
-              className="pin-input mono"
-              type="password"
-              value={passcode}
-              onChange={(event) => setPasscode(event.target.value)}
-              placeholder="••••••"
-              maxLength={32}
-              autoComplete="current-password"
-              disabled={isSubmitting}
-            />
-            <span className="hint mono">{adminPasscodeConfigured ? 'PIN' : 'set PIN'}</span>
-            <span className="spacer" />
-            {error && <span className="err mono">{error}</span>}
-            <button className="btn-x primary" type="submit" disabled={isSubmitting}>
-              {adminPasscodeConfigured ? 'Unlock' : 'Set passcode'}
+          {adminLoginOpen ? (
+            <form className="card login-compact" onSubmit={submit}>
+              <Lock size={14} className="ic" />
+              <span className="lbl">Admin log in</span>
+              <input
+                className="pin-input mono"
+                type="password"
+                value={passcode}
+                onChange={(event) => setPasscode(event.target.value)}
+                placeholder="••••••"
+                maxLength={32}
+                autoComplete="current-password"
+                disabled={isSubmitting}
+                autoFocus
+              />
+              <span className="hint mono">{adminPasscodeConfigured ? 'PIN' : 'set PIN'}</span>
+              <span className="spacer" />
+              {error && <span className="err mono">{error}</span>}
+              <button className="btn-x primary" type="submit" disabled={isSubmitting}>
+                Log in
+              </button>
+              <button
+                className="btn-x"
+                type="button"
+                onClick={() => {
+                  setAdminLoginOpen(false);
+                  setError('');
+                }}
+                disabled={isSubmitting}
+              >
+                Close
+              </button>
+            </form>
+          ) : (
+            <button
+              className="admin-login-minimized"
+              type="button"
+              onClick={() => setAdminLoginOpen(true)}
+            >
+              <Lock size={12} />
+              Admin log in
             </button>
-          </form>
+          )}
 
           <section className="card" aria-label="Tournaments">
             <div className="card-hd">
