@@ -27,6 +27,7 @@ import {
   Trash2,
   Trophy,
   Upload,
+  UserPlus,
   Users,
   X
 } from 'lucide-react';
@@ -66,6 +67,7 @@ import {
   isRemoteStoreEnabled,
   loadRemoteTournamentStore,
   saveRemoteTournamentStore,
+  submitRemoteTournamentApplication,
   verifyRemoteAdminPasscode
 } from './lib/remoteStorage';
 import type {
@@ -77,6 +79,7 @@ import type {
   MatchSlot,
   Ruleset,
   SlotSide,
+  TournamentApplicationDraft,
   TournamentFormat,
   TournamentState
 } from './lib/types';
@@ -277,6 +280,35 @@ function App() {
     setSelectedDivisionId('');
     setHighlightedMatchId(null);
     setCsvPreview({ rows: [], errors: [] });
+  };
+
+  const submitTournamentApplication = async (
+    tournamentId: string,
+    draft: TournamentApplicationDraft
+  ): Promise<boolean> => {
+    const sanitizedDraft = sanitizeTournamentApplicationDraft(draft);
+    if (!sanitizedDraft) return false;
+
+    if (isRemoteStoreEnabled()) {
+      if (!remoteStoreReady) return false;
+
+      try {
+        const nextStore = await submitRemoteTournamentApplication(tournamentId, sanitizedDraft);
+        setTournamentStore(nextStore);
+        setSelectedDivisionId('');
+        return true;
+      } catch (error) {
+        if (!isAbortError(error)) {
+          console.warn('Tournament application could not be submitted remotely.', error);
+        }
+        return false;
+      }
+    }
+
+    setTournamentStore((currentStore) =>
+      addTournamentApplication(currentStore, tournamentId, sanitizedDraft)
+    );
+    return true;
   };
 
   const handleAdminPasscodeSubmit = async (passcode: string): Promise<boolean> => {
@@ -695,12 +727,14 @@ function App() {
         tournaments={tournamentStore.tournaments}
         activeTournamentId={tournamentStore.activeTournamentId}
         adminPasscodeConfigured={adminPasscodeConfigured}
+        applicationsReady={remoteStoreReady}
         onAdminPasscodeSubmit={handleAdminPasscodeSubmit}
         onGuestSelect={(tournamentId) => {
           selectTournament(tournamentId);
           setSessionMode('guest');
           setGuestTab('brackets');
         }}
+        onTournamentApply={submitTournamentApplication}
         onThemeToggle={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
       />
     );
@@ -906,21 +940,28 @@ function EntryScreen({
   tournaments,
   activeTournamentId,
   adminPasscodeConfigured,
+  applicationsReady,
   onAdminPasscodeSubmit,
   onGuestSelect,
+  onTournamentApply,
   onThemeToggle,
 }: {
   theme: 'dark' | 'light';
   tournaments: TournamentStore['tournaments'];
   activeTournamentId: string;
   adminPasscodeConfigured: boolean;
+  applicationsReady: boolean;
   onAdminPasscodeSubmit: (passcode: string) => boolean | Promise<boolean>;
   onGuestSelect: (tournamentId: string) => void;
+  onTournamentApply: (tournamentId: string, draft: TournamentApplicationDraft) => Promise<boolean>;
   onThemeToggle: () => void;
 }) {
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [applicationTournamentId, setApplicationTournamentId] = useState<string | null>(null);
+  const [applicationNotice, setApplicationNotice] = useState('');
+  const applicationTournament = tournaments.find((record) => record.id === applicationTournamentId);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -946,7 +987,7 @@ function EntryScreen({
       <main className="auth-shell">
         <section className="auth-hero">
           <h1>NTNUI Jiu-Jitsu</h1>
-          <p>Tournament desk</p>
+          <p>In house tournament</p>
           <button className="btn sm" type="button" onClick={onThemeToggle}>
             <span className="ic">{theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}</span>
             Theme
@@ -957,7 +998,7 @@ function EntryScreen({
           <form className="panel auth-panel admin-auth-panel" onSubmit={submit}>
             <div className="panel-hd">
               <Lock size={15} />
-              <span className="t">{adminPasscodeConfigured ? 'Admin' : 'Create admin passcode'}</span>
+              <span className="t">Admin log in</span>
             </div>
             <div className="auth-panel-body">
               <div className="field-label">
@@ -974,7 +1015,7 @@ function EntryScreen({
               {error && <div className="auth-error">{error}</div>}
               <button className="btn primary" type="submit" disabled={isSubmitting}>
                 <span className="ic"><Lock size={13} /></span>
-                {adminPasscodeConfigured ? 'Log in' : 'Create login'}
+                Admin log in
               </button>
             </div>
           </form>
@@ -985,25 +1026,177 @@ function EntryScreen({
               <span className="t">Tournaments</span>
             </div>
             <div className="auth-panel-body">
+              {applicationNotice && <div className="notice success application-notice">{applicationNotice}</div>}
               <div className="guest-tournament-list">
                 {tournaments.map((record) => (
-                  <button
+                  <div
                     key={record.id}
                     className={`guest-tournament-row${record.id === activeTournamentId ? ' active' : ''}`}
-                    type="button"
-                    onClick={() => onGuestSelect(record.id)}
                   >
-                    <span className="guest-tournament-name">{record.tournament.eventName}</span>
-                    <span className="guest-tournament-meta">
-                      {record.tournament.divisions.length} divisions · {record.tournament.competitors.length} competitors
-                    </span>
-                  </button>
+                    <div className="guest-tournament-main">
+                      <span className="guest-tournament-name">{record.tournament.eventName}</span>
+                      <span className="guest-tournament-meta">
+                        {record.tournament.divisions.length} divisions · {record.tournament.competitors.length} competitors
+                      </span>
+                    </div>
+                    <div className="guest-tournament-actions">
+                      <button className="btn sm" type="button" onClick={() => onGuestSelect(record.id)}>
+                        <span className="ic"><Eye size={13} /></span>View
+                      </button>
+                      <button
+                        className="btn primary sm"
+                        type="button"
+                        onClick={() => {
+                          setApplicationNotice('');
+                          setApplicationTournamentId(record.id);
+                        }}
+                        disabled={!applicationsReady}
+                      >
+                        <span className="ic"><UserPlus size={13} /></span>Apply
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           </section>
         </section>
       </main>
+      {applicationTournament && (
+        <TournamentApplicationModal
+          tournament={applicationTournament.tournament}
+          onClose={() => setApplicationTournamentId(null)}
+          onSubmit={async (draft) => {
+            const accepted = await onTournamentApply(applicationTournament.id, draft);
+            if (accepted) {
+              setApplicationNotice(`Application sent to ${applicationTournament.tournament.eventName}.`);
+              setApplicationTournamentId(null);
+            }
+            return accepted;
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function TournamentApplicationModal({
+  tournament,
+  onSubmit,
+  onClose,
+}: {
+  tournament: TournamentState;
+  onSubmit: (draft: TournamentApplicationDraft) => Promise<boolean>;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState<TournamentApplicationDraft>({
+    name: '',
+    weightClass: '',
+    monthsTrained: '',
+    gender: '',
+    divisionId: ''
+  });
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!draft.name.trim()) {
+      setError('Name is required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const accepted = await onSubmit(draft);
+    if (!accepted) {
+      setError('Application could not be submitted.');
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <form className="modal-panel application-modal" onSubmit={submit} onClick={(event) => event.stopPropagation()}>
+        <div className="modal-hd">
+          <UserPlus size={15} />
+          <div>
+            <div className="modal-title">Apply to tournament</div>
+            <div className="modal-sub">{tournament.eventName}</div>
+          </div>
+          <span className="spacer" />
+          <button className="icon-btn" type="button" onClick={onClose} title="Close" disabled={isSubmitting}>
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="application-form">
+          <div className="field-label field-wide">
+            <span className="lbl">Name</span>
+            <input
+              className="input sm"
+              value={draft.name}
+              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+              autoFocus
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="field-label">
+            <span className="lbl">Weight</span>
+            <input
+              className="input sm"
+              value={draft.weightClass ?? ''}
+              onChange={(event) => setDraft({ ...draft, weightClass: event.target.value })}
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="field-label">
+            <span className="lbl">Months</span>
+            <input
+              className="input sm"
+              inputMode="numeric"
+              value={draft.monthsTrained ?? ''}
+              onChange={(event) => setDraft({ ...draft, monthsTrained: event.target.value })}
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="field-label">
+            <span className="lbl">Gender</span>
+            <input
+              className="input sm"
+              value={draft.gender ?? ''}
+              onChange={(event) => setDraft({ ...draft, gender: event.target.value })}
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="field-label">
+            <span className="lbl">Division</span>
+            <select
+              className="input sm"
+              value={draft.divisionId ?? ''}
+              onChange={(event) => setDraft({ ...draft, divisionId: event.target.value })}
+              disabled={isSubmitting}
+            >
+              <option value="">Unassigned</option>
+              {tournament.divisions.map((division) => (
+                <option key={division.id} value={division.id}>{division.name}</option>
+              ))}
+            </select>
+          </div>
+          {error && <div className="auth-error field-wide">{error}</div>}
+        </div>
+
+        <div className="modal-foot">
+          <span className="spacer" />
+          <button className="btn sm" type="button" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </button>
+          <button className="btn primary sm" type="submit" disabled={isSubmitting}>
+            <span className="ic"><UserPlus size={13} /></span>
+            Apply
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -3046,6 +3239,71 @@ function ImportExportView({
 }
 
 /* ── Helpers ── */
+
+function sanitizeTournamentApplicationDraft(
+  draft: TournamentApplicationDraft
+): TournamentApplicationDraft | null {
+  const name = draft.name.trim();
+  if (!name) return null;
+
+  return {
+    name,
+    weightClass: draft.weightClass?.trim() || undefined,
+    monthsTrained: draft.monthsTrained?.trim() || undefined,
+    gender: draft.gender?.trim() || undefined,
+    divisionId: draft.divisionId?.trim() || undefined
+  };
+}
+
+function addTournamentApplication(
+  store: TournamentStore,
+  tournamentId: string,
+  draft: TournamentApplicationDraft
+): TournamentStore {
+  return {
+    ...store,
+    tournaments: store.tournaments.map((record) =>
+      record.id === tournamentId
+        ? { ...record, tournament: addApplicationToTournament(record.tournament, draft) }
+        : record
+    )
+  };
+}
+
+function addApplicationToTournament(
+  tournament: TournamentState,
+  draft: TournamentApplicationDraft
+): TournamentState {
+  const divisionId = draft.divisionId &&
+    tournament.divisions.some((division) => division.id === draft.divisionId)
+    ? draft.divisionId
+    : undefined;
+  const competitor: Competitor = {
+    id: createId('competitor'),
+    name: draft.name,
+    weightClass: draft.weightClass,
+    monthsTrained: draft.monthsTrained,
+    gender: draft.gender,
+    divisionId
+  };
+
+  return {
+    ...tournament,
+    competitors: [...tournament.competitors, competitor],
+    divisions: tournament.divisions.map((division) =>
+      division.id === divisionId
+        ? syncDivisionSeeds({
+            ...division,
+            competitorIds: appendUnique(division.competitorIds, competitor.id),
+            seedOrder: appendUnique(division.seedOrder, competitor.id),
+            bracket: undefined,
+            updatedAt: new Date().toISOString()
+          })
+        : division
+    ),
+    updatedAt: new Date().toISOString()
+  };
+}
 
 function compareCompetitors(
   left: Competitor,

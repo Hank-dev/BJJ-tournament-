@@ -100,6 +100,33 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  const applicationMatch = url.pathname.match(/^\/api\/tournament-store\/([^/]+)\/applications$/);
+  if (applicationMatch && request.method === 'POST') {
+    const store = await readTournamentStore();
+    if (!store) {
+      sendJson(response, 404, { error: 'Tournament store not found' });
+      return;
+    }
+
+    const body = await readJsonBody(request);
+    const draft = parseTournamentApplicationDraft(body);
+    if (!draft) {
+      sendJson(response, 400, { error: 'Invalid application payload' });
+      return;
+    }
+
+    const tournamentId = decodeURIComponent(applicationMatch[1]);
+    const nextStore = addTournamentApplication(store, tournamentId, draft);
+    if (!nextStore) {
+      sendJson(response, 404, { error: 'Tournament not found' });
+      return;
+    }
+
+    await writeTournamentStore(nextStore);
+    sendJson(response, 201, nextStore);
+    return;
+  }
+
   sendJson(response, 404, { error: 'Not found' });
 }
 
@@ -253,6 +280,96 @@ function normalizeTournamentStore(store) {
     activeTournamentId,
     tournaments: store.tournaments
   };
+}
+
+function parseTournamentApplicationDraft(value) {
+  if (!value || typeof value !== 'object') return null;
+  const name = typeof value.name === 'string' ? value.name.trim() : '';
+  if (!name) return null;
+
+  const draft = { name };
+  for (const key of ['weightClass', 'monthsTrained', 'gender', 'divisionId']) {
+    if (typeof value[key] === 'string' && value[key].trim()) {
+      draft[key] = value[key].trim();
+    }
+  }
+  return draft;
+}
+
+function addTournamentApplication(store, tournamentId, draft) {
+  let found = false;
+  const tournaments = store.tournaments.map((record) => {
+    if (record.id !== tournamentId) return record;
+    found = true;
+    return {
+      ...record,
+      tournament: addApplicationToTournament(record.tournament, draft)
+    };
+  });
+
+  return found ? normalizeTournamentStore({ ...store, tournaments }) : null;
+}
+
+function addApplicationToTournament(tournament, draft) {
+  const validDivisionId =
+    draft.divisionId && tournament.divisions.some((division) => division.id === draft.divisionId)
+      ? draft.divisionId
+      : undefined;
+  const competitor = {
+    id: createId('competitor'),
+    name: draft.name,
+    weightClass: draft.weightClass,
+    monthsTrained: draft.monthsTrained,
+    gender: draft.gender,
+    divisionId: validDivisionId
+  };
+
+  return {
+    ...tournament,
+    competitors: [...tournament.competitors, competitor],
+    divisions: tournament.divisions.map((division) =>
+      division.id === validDivisionId
+        ? syncDivisionSeeds({
+            ...division,
+            competitorIds: appendUnique(
+              Array.isArray(division.competitorIds) ? division.competitorIds : [],
+              competitor.id
+            ),
+            seedOrder: appendUnique(
+              Array.isArray(division.seedOrder) ? division.seedOrder : [],
+              competitor.id
+            ),
+            bracket: undefined,
+            updatedAt: new Date().toISOString()
+          })
+        : division
+    ),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function syncDivisionSeeds(division) {
+  const competitorIds = unique(Array.isArray(division.competitorIds) ? division.competitorIds : []);
+  const currentSeedOrder = Array.isArray(division.seedOrder) ? division.seedOrder : [];
+  const seedOrder = [
+    ...currentSeedOrder.filter((competitorId) => competitorIds.includes(competitorId)),
+    ...competitorIds.filter((competitorId) => !currentSeedOrder.includes(competitorId))
+  ];
+
+  return { ...division, competitorIds, seedOrder };
+}
+
+function appendUnique(values, value) {
+  return values.includes(value) ? values : [...values, value];
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
+function createId(prefix) {
+  const randomPart = Math.random().toString(36).slice(2, 9);
+  return `${prefix}-${Date.now().toString(36)}-${randomPart}`;
 }
 
 function setCommonHeaders(response) {

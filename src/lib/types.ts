@@ -24,6 +24,11 @@ export interface Competitor {
   divisionId?: string;
 }
 
+export type TournamentApplicationDraft = Pick<
+  Competitor,
+  'name' | 'weightClass' | 'monthsTrained' | 'gender' | 'divisionId'
+>;
+
 export interface Division {
   id: string;
   name: string;

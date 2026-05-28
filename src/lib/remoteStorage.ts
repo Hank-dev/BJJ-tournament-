@@ -3,6 +3,7 @@ import {
   normalizeTournamentStore,
   type TournamentStore
 } from './storage';
+import type { TournamentApplicationDraft } from './types';
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/, '') ?? '';
 const remoteStoreEnabled = Boolean(configuredApiBaseUrl) || import.meta.env.PROD;
@@ -64,6 +65,34 @@ export async function verifyRemoteAdminPasscode(
   if (!response.ok) throw new Error(`Failed to verify admin passcode: ${response.status}`);
   const payload = (await response.json()) as { ok?: boolean };
   return payload.ok === true;
+}
+
+export async function submitRemoteTournamentApplication(
+  tournamentId: string,
+  draft: TournamentApplicationDraft,
+  signal?: AbortSignal
+): Promise<TournamentStore> {
+  if (!remoteStoreEnabled) {
+    throw new Error('Remote tournament store is not enabled.');
+  }
+
+  const response = await fetch(
+    `${configuredApiBaseUrl}/api/tournament-store/${encodeURIComponent(tournamentId)}/applications`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draft),
+      signal
+    }
+  );
+
+  if (!response.ok) throw new Error(`Failed to submit tournament application: ${response.status}`);
+
+  const payload = (await response.json()) as unknown;
+  if (!isTournamentStore(payload)) {
+    throw new Error('Tournament application response was invalid.');
+  }
+  return normalizeTournamentStore(payload);
 }
 
 export function isAbortError(error: unknown): boolean {
