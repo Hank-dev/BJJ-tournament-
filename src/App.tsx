@@ -566,7 +566,8 @@ function App() {
     winnerId: string,
     method: string,
     submissionType?: string,
-    notes?: string
+    notes?: string,
+    submissionSeconds?: number
   ) => {
     commitTournament((current) => ({
       ...current,
@@ -574,7 +575,15 @@ function App() {
         if (division.id !== divisionId || !division.bracket) return division;
         return {
           ...division,
-          bracket: applyMatchResult(division.bracket, matchId, winnerId, method, submissionType, notes),
+          bracket: applyMatchResult(
+            division.bracket,
+            matchId,
+            winnerId,
+            method,
+            submissionType,
+            notes,
+            submissionSeconds
+          ),
           updatedAt: new Date().toISOString()
         };
       })
@@ -1995,7 +2004,8 @@ interface BracketsViewProps {
     winnerId: string,
     method: string,
     submissionType?: string,
-    notes?: string
+    notes?: string,
+    submissionSeconds?: number
   ) => void;
   onClearResult: (divisionId: string, matchId: string) => void;
   onUpdateMatchSlot: (divisionId: string, matchId: string, side: SlotSide, slot: MatchSlot) => void;
@@ -2315,14 +2325,20 @@ function MatchCardComponent({
   const [winnerId, setWinnerId] = useState(match.result?.winnerId ?? resolved.participantIds[0] ?? '');
   const [method, setMethod] = useState(match.result?.method ?? getDefaultWinMethod(division.ruleset));
   const [submissionType, setSubmissionType] = useState(match.result?.submissionType ?? '');
+  const [submissionTime, setSubmissionTime] = useState(
+    formatSubmissionTimeInput(match.result?.submissionSeconds)
+  );
   const [notes, setNotes] = useState(match.result?.notes ?? '');
+  const [resultError, setResultError] = useState('');
   const [isResultFormOpen, setIsResultFormOpen] = useState(!match.result);
 
   useEffect(() => {
     setWinnerId(match.result?.winnerId ?? resolved.participantIds[0] ?? '');
     setMethod(match.result?.method ?? getDefaultWinMethod(division.ruleset));
     setSubmissionType(match.result?.submissionType ?? '');
+    setSubmissionTime(formatSubmissionTimeInput(match.result?.submissionSeconds));
     setNotes(match.result?.notes ?? '');
+    setResultError('');
   }, [division.ruleset, match.id, match.result, resolved.participantIds.join('|')]);
 
   useEffect(() => {
@@ -2345,7 +2361,14 @@ function MatchCardComponent({
   const save = () => {
     if (!winnerId || !method) return;
     const nextSubmissionType = isSubmissionMethod(method) ? submissionType.trim() : undefined;
-    onSaveResult(division.id, match.id, winnerId, method, nextSubmissionType, notes);
+    const nextSubmissionSeconds =
+      method === 'Regulation submission' ? parseSubmissionTimeInput(submissionTime) : undefined;
+    if (method === 'Regulation submission' && submissionTime.trim() && nextSubmissionSeconds === undefined) {
+      setResultError('Enter time as M:SS or seconds.');
+      return;
+    }
+    setResultError('');
+    onSaveResult(division.id, match.id, winnerId, method, nextSubmissionType, notes, nextSubmissionSeconds);
     setIsResultFormOpen(false);
   };
 
@@ -2441,7 +2464,10 @@ function MatchCardComponent({
             </div>
             <div className="field-label">
               <span className="lbl">Method</span>
-              <select className="input sm" value={method} onChange={(e) => setMethod(e.target.value)}>
+              <select className="input sm" value={method} onChange={(e) => {
+                setMethod(e.target.value);
+                setResultError('');
+              }}>
                 {methods.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
@@ -2452,6 +2478,22 @@ function MatchCardComponent({
               <input className="input sm" value={submissionType} onChange={(e) => setSubmissionType(e.target.value)} placeholder="e.g. Triangle, RNC..." />
             </div>
           )}
+          {method === 'Regulation submission' && (
+            <div className="field-label field-wide">
+              <span className="lbl">Time</span>
+              <input
+                className="input sm"
+                inputMode="numeric"
+                value={submissionTime}
+                onChange={(e) => {
+                  setSubmissionTime(e.target.value);
+                  setResultError('');
+                }}
+                placeholder="e.g. 1:23"
+              />
+            </div>
+          )}
+          {resultError && <div className="auth-error">{resultError}</div>}
           <div className="field-label field-wide">
             <span className="lbl">Notes</span>
             <input className="input sm" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional..." />
@@ -2938,9 +2980,43 @@ function moveScheduleKey(keys: string[], activeKey: string, targetKey: string): 
 function formatResultMethod(result?: MatchResult): string | undefined {
   if (!result?.method) return undefined;
   const submissionType = result.submissionType?.trim();
-  return submissionType && isSubmissionMethod(result.method)
-    ? `${result.method} - ${submissionType}`
-    : result.method;
+  const parts = [result.method];
+  if (submissionType && isSubmissionMethod(result.method)) {
+    parts.push(submissionType);
+  }
+  if (result.method === 'Regulation submission' && result.submissionSeconds !== undefined) {
+    parts.push(formatSubmissionDuration(result.submissionSeconds));
+  }
+  return parts.join(' - ');
+}
+
+function parseSubmissionTimeInput(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  if (/^\d+$/.test(trimmed)) {
+    const seconds = Number(trimmed);
+    return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+  }
+
+  const match = trimmed.match(/^(\d+):([0-5]?\d)$/);
+  if (!match) return undefined;
+
+  const minutes = Number(match[1]);
+  const seconds = Number(match[2]);
+  const totalSeconds = minutes * 60 + seconds;
+  return Number.isFinite(totalSeconds) ? totalSeconds : undefined;
+}
+
+function formatSubmissionTimeInput(seconds?: number): string {
+  return seconds === undefined ? '' : formatSubmissionDuration(seconds);
+}
+
+function formatSubmissionDuration(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 /* ── Results View ── */
@@ -2954,6 +3030,13 @@ interface DivisionResult {
   completedMatches: number;
   allRealMatchesComplete: boolean;
   submissionKing?: { competitor: Competitor; count: number };
+}
+
+interface FastestSubmissionResult {
+  competitor: Competitor;
+  division: Division;
+  match: Match;
+  seconds: number;
 }
 
 function computeDivisionResults(
@@ -2996,6 +3079,35 @@ function computeDivisionResults(
   });
 }
 
+function findFastestRegulationSubmission(
+  divisions: Division[],
+  competitorById: Map<string, Competitor>
+): FastestSubmissionResult | undefined {
+  let fastest: FastestSubmissionResult | undefined;
+
+  for (const division of divisions) {
+    for (const match of division.bracket?.matches ?? []) {
+      const result = match.result;
+      if (
+        result?.method !== 'Regulation submission' ||
+        result.submissionSeconds === undefined ||
+        !Number.isFinite(result.submissionSeconds)
+      ) {
+        continue;
+      }
+
+      const competitor = competitorById.get(result.winnerId);
+      if (!competitor) continue;
+
+      if (!fastest || result.submissionSeconds < fastest.seconds) {
+        fastest = { competitor, division, match, seconds: result.submissionSeconds };
+      }
+    }
+  }
+
+  return fastest;
+}
+
 function ResultsView({
   divisions,
   competitorById,
@@ -3005,6 +3117,10 @@ function ResultsView({
 }) {
   const results = useMemo(
     () => computeDivisionResults(divisions, competitorById),
+    [divisions, competitorById]
+  );
+  const fastestSubmission = useMemo(
+    () => findFastestRegulationSubmission(divisions, competitorById),
     [divisions, competitorById]
   );
 
@@ -3035,6 +3151,13 @@ function ResultsView({
           <div>
             <div className="results-hero-title">Tournament Results</div>
             <div className="results-hero-sub">{activeDivisions.length} division{activeDivisions.length !== 1 ? 's' : ''} &middot; {totalCompleted}/{totalMatches} matches completed &middot; {totalSubs} submission{totalSubs !== 1 ? 's' : ''}</div>
+            {fastestSubmission && (
+              <div className="results-hero-fastest">
+                Fastest submission: <strong>{fastestSubmission.competitor.name}</strong>
+                <span>{formatSubmissionDuration(fastestSubmission.seconds)}</span>
+                <em>{fastestSubmission.division.name} · {fastestSubmission.match.label}</em>
+              </div>
+            )}
           </div>
         </div>
       </div>

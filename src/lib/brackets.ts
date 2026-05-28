@@ -349,7 +349,8 @@ export function applyMatchResult(
   winnerId: string,
   method: string,
   submissionType?: string,
-  notes?: string
+  notes?: string,
+  submissionSeconds?: number
 ): Bracket {
   const target = bracket.matches.find((match) => match.id === matchId);
   if (!target) return bracket;
@@ -362,6 +363,13 @@ export function applyMatchResult(
     loserId,
     method,
     submissionType: isSubmissionMethod(method) ? submissionType?.trim() || undefined : undefined,
+    submissionSeconds:
+      method === 'Regulation submission' &&
+      Number.isFinite(submissionSeconds) &&
+      submissionSeconds !== undefined &&
+      submissionSeconds >= 0
+        ? Math.floor(submissionSeconds)
+        : undefined,
     notes: notes?.trim() || undefined,
     completedAt: new Date().toISOString()
   };

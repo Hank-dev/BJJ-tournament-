@@ -68,6 +68,23 @@ describe('single elimination brackets', () => {
     expect(bracket.matches[0].result?.submissionType).toBeUndefined();
   });
 
+  it('stores submission time only for regulation submissions', () => {
+    let bracket = generateBracketForDivision('single-elimination', ['a', 'b']);
+    bracket = applyMatchResult(
+      bracket,
+      'main-r1-m1',
+      'a',
+      'Regulation submission',
+      'Armbar',
+      undefined,
+      42
+    );
+    expect(bracket.matches[0].result?.submissionSeconds).toBe(42);
+
+    bracket = applyMatchResult(bracket, 'main-r1-m1', 'a', 'Submission', 'Armbar', undefined, 42);
+    expect(bracket.matches[0].result?.submissionSeconds).toBeUndefined();
+  });
+
   it('does not place winners until every real match is completed', () => {
     let bracket = generateBracketForDivision('single-elimination', ['a', 'b', 'c']);
     bracket = applyMatchResult(bracket, 'main-r1-m2', 'b', 'Points');

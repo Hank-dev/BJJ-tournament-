@@ -54,6 +54,7 @@ export interface MatchResult {
   loserId?: string;
   method: string;
   submissionType?: string;
+  submissionSeconds?: number;
   notes?: string;
   completedAt: string;
 }
