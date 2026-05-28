@@ -1017,7 +1017,7 @@ function EntryScreen({
   return (
     <div className={`landing-page ${theme === 'light' ? 'theme-light' : 'theme-dark'}`}>
       <div className="bg">
-        <img src="/landing-photo.jpg" alt="" />
+        <img src="/IMG20251123145520.jpg" alt="" />
         <div className="bg-grid" />
       </div>
 

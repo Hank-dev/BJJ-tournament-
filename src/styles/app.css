@@ -1543,8 +1543,7 @@ select.input {
   align-items: center;
   gap: 14px;
   padding: 20px 22px;
-  background:
-    linear-gradient(135deg, var(--accent-soft) 0%, transparent 60%);
+  background: var(--surface);
 }
 .results-hero-icon { color: var(--accent); flex-shrink: 0; }
 .results-hero-title { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
