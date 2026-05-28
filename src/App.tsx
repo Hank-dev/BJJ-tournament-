@@ -1012,8 +1012,6 @@ function EntryScreen({
 
   const today = new Date();
   const dateStr = `${String(today.getDate()).padStart(2, '0')}·${String(today.getMonth() + 1).padStart(2, '0')}·${today.getFullYear()}`;
-  const timeStr = today.toLocaleString('en-US', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()
-    + ' · ' + today.toTimeString().slice(0, 5);
   const adminLoginControl = adminLoginOpen ? (
     <form className="login-compact" onSubmit={submit}>
       <Lock size={14} className="ic" />
@@ -1073,10 +1071,6 @@ function EntryScreen({
           </div>
         </div>
         <span className="spacer" />
-        <div className="meta">
-          <span><span className="dot" /> Mat system online · 2 active</span>
-          <span>{timeStr}</span>
-        </div>
         <button className="theme-btn" type="button" onClick={onThemeToggle}>
           {theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
           Theme
@@ -1088,12 +1082,6 @@ function EntryScreen({
 
       <main className="hero">
         <div className="title-block">
-          <div className="kicker">
-            <span className="sq" />
-            <span className="sep">/</span>
-            <span>NTNUI BJJ · Public registry</span>
-          </div>
-
           <h1 className="title">
             NTNUI<br />
             Jiu-Jitsu<span className="alt"> Open.</span>
@@ -1193,12 +1181,6 @@ function EntryScreen({
           </section>
         </div>
       </main>
-
-      <footer className="foot mono">
-        <span><span className="dot-status" />BJJ TOURNAMENT v0.1 · LOCAL-FIRST · UNAUTHENTICATED</span>
-        <span className="spacer" />
-        <span>AUTOSAVED · LIVE</span>
-      </footer>
 
       {applicationTournament && (
         <TournamentApplicationModal
