@@ -2113,8 +2113,8 @@ select.input {
 /* Hero */
 .landing-page .hero {
   padding: 72px 64px 56px;
-  max-width: 960px;
-  margin: 0 auto;
+  max-width: 1040px;
+  margin: 0;
   width: 100%;
   box-sizing: border-box;
 }
