@@ -2112,18 +2112,14 @@ select.input {
 
 /* Hero */
 .landing-page .hero {
-  display: grid;
-  grid-template-columns: minmax(520px, 1fr) minmax(540px, 1fr);
-  gap: 64px;
   padding: 72px 64px 56px;
-  align-items: start;
-  max-width: 1440px;
+  max-width: 960px;
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
 }
 
-.landing-page .title-block { max-width: 640px; }
+.landing-page .title-block { max-width: 720px; }
 
 .landing-page .title {
   font-size: clamp(56px, 8.4vw, 104px);
@@ -2158,32 +2154,14 @@ select.input {
 }
 .landing-page .lede .em { color: var(--text-strong); }
 
-.landing-page .stat-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 6px;
-  overflow: hidden;
-  background: rgba(10,10,10,0.45);
-  backdrop-filter: blur(6px);
-  max-width: 560px;
-}
-.landing-page.theme-light .stat-strip { background: rgba(255,255,255,0.55); border-color: rgba(0,0,0,0.10); }
-.landing-page .stat-strip .stat {
-  padding: 12px 14px;
-  border-right: 1px solid rgba(255,255,255,0.08);
-  display: flex; flex-direction: column; gap: 4px;
-}
-.landing-page.theme-light .stat-strip .stat { border-right-color: rgba(0,0,0,0.08); }
-.landing-page .stat-strip .stat:last-child { border-right: 0; }
-.landing-page .stat-strip .lbl {
-  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
-}
-.landing-page .stat-strip .val { font-family: "Geist Mono", monospace; font-size: 14px; color: var(--text); }
-.landing-page .stat-strip .val.chip-l { font-size: 11px; align-self: flex-start; height: auto; padding: 3px 8px; }
-
 /* Cards */
-.landing-page .cards { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.landing-page .cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  max-width: 680px;
+}
 
 .landing-page .card {
   background: rgba(20,20,22,0.78);
@@ -2348,7 +2326,7 @@ select.input {
 .landing-page .chip-l.bare { background: transparent; border: 0; color: var(--muted); font-family: inherit; padding: 0; height: auto; }
 
 @media (max-width: 1180px) {
-  .landing-page .hero { grid-template-columns: 1fr; gap: 40px; padding: 48px 36px; }
+  .landing-page .hero { padding: 48px 36px; }
   .landing-page .title { font-size: clamp(48px, 11vw, 84px); }
 }
 @media (max-width: 640px) {
@@ -2394,7 +2372,6 @@ select.input {
     grid-column: 1 / -1;
   }
   .landing-page .hero { padding: 36px 20px; }
-  .landing-page .stat-strip { grid-template-columns: repeat(2, 1fr); }
   .landing-page .t-row { grid-template-columns: 1fr; }
   .landing-page .t-actions { width: 100%; }
 }

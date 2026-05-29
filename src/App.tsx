@@ -1003,9 +1003,6 @@ function EntryScreen({
     }
   };
 
-  const totalDivisions = tournaments.reduce((sum, r) => sum + r.tournament.divisions.length, 0);
-  const totalCompetitors = tournaments.reduce((sum, r) => sum + r.tournament.competitors.length, 0);
-
   const formatTournamentMeta = (record: TournamentStore['tournaments'][number]) => {
     const t = record.tournament;
     const matches = t.divisions.reduce((sum, d) => sum + (d.bracket?.matches.length ?? 0), 0);
@@ -1024,8 +1021,6 @@ function EntryScreen({
     return { label: 'draft', cls: 'draft' as const };
   };
 
-  const today = new Date();
-  const dateStr = `${String(today.getDate()).padStart(2, '0')}·${String(today.getMonth() + 1).padStart(2, '0')}·${today.getFullYear()}`;
   const adminLoginControl = adminLoginOpen ? (
     <form className="login-compact" onSubmit={submit}>
       <Lock size={14} className="ic" />
@@ -1107,92 +1102,73 @@ function EntryScreen({
             The semi-annual in-house tournament for active club members. No-Gi divisions, submission-only · EBI ruleset.
           </p>
 
-          <div className="stat-strip">
-            <div className="stat">
-              <span className="lbl">Date</span>
-              <span className="val mono">{dateStr}</span>
-            </div>
-            <div className="stat">
-              <span className="lbl">Divisions</span>
-              <span className="val mono">{String(totalDivisions).padStart(2, '0')}</span>
-            </div>
-            <div className="stat">
-              <span className="lbl">Competitors</span>
-              <span className="val mono">{totalCompetitors}</span>
-            </div>
-            <div className="stat">
-              <span className="lbl">Registration</span>
-              <span className="val chip-l dot live">open</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="cards">
-          <section className="card" aria-label="Tournaments">
-            <div className="card-hd">
-              <Eye size={12} />
-              <span className="t">Public · Spectator view</span>
-              <span className="spacer" />
-              <span className="chip-l bare">{tournaments.length} tournament{tournaments.length !== 1 ? 's' : ''}</span>
-            </div>
-
-            {applicationNotice && (
-              <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 11.5, color: 'var(--positive)' }}>
-                {applicationNotice}
+          <div className="cards">
+            <section className="card" aria-label="Tournaments">
+              <div className="card-hd">
+                <Eye size={12} />
+                <span className="t">Public · Spectator view</span>
+                <span className="spacer" />
+                <span className="chip-l bare">{tournaments.length} tournament{tournaments.length !== 1 ? 's' : ''}</span>
               </div>
-            )}
 
-            {tournaments.length === 0 && (
-              <div className="t-row" style={{ color: 'var(--muted)', justifyContent: 'center' }}>
-                <div className="t-name">
-                  <span className="name">No tournaments yet</span>
-                  <div className="meta">
-                    <span className="chip-l bare">Log in as admin to create one</span>
-                  </div>
+              {applicationNotice && (
+                <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 11.5, color: 'var(--positive)' }}>
+                  {applicationNotice}
                 </div>
-              </div>
-            )}
+              )}
 
-            {tournaments.map((record) => {
-              const status = getStatus(record);
-              const meta = formatTournamentMeta(record);
-              const t = record.tournament;
-              const isDim = status.cls === 'draft';
-              const code = `NTNUI · ${t.eventName.toUpperCase().replace(/\s+/g, '')}`;
-              return (
-                <div key={record.id} className={`t-row${isDim ? ' dim' : ''}`}>
+              {tournaments.length === 0 && (
+                <div className="t-row" style={{ color: 'var(--muted)', justifyContent: 'center' }}>
                   <div className="t-name">
-                    <div className="ln1">
-                      <span className="name">{t.eventName}</span>
-                      <span className="code mono">{code}</span>
-                    </div>
+                    <span className="name">No tournaments yet</span>
                     <div className="meta">
-                      <span className={`chip-l dot ${status.cls}`}>{status.label}</span>
-                      <span className="chip-l">{t.divisions.length} division{t.divisions.length !== 1 ? 's' : ''}</span>
-                      <span className="chip-l">{t.competitors.length} competitor{t.competitors.length !== 1 ? 's' : ''}</span>
-                      {meta.matches > 0 && <span className="chip-l">{meta.done} / {meta.matches} matches</span>}
+                      <span className="chip-l bare">Log in as admin to create one</span>
                     </div>
-                  </div>
-                  <div className="t-actions">
-                    <button className="btn-x" type="button" onClick={() => onGuestSelect(record.id)}>
-                      View brackets
-                    </button>
-                    <button
-                      className="btn-x primary"
-                      type="button"
-                      onClick={() => {
-                        setApplicationNotice('');
-                        setApplicationTournamentId(record.id);
-                      }}
-                      disabled={!applicationsReady}
-                    >
-                      Apply
-                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </section>
+              )}
+
+              {tournaments.map((record) => {
+                const status = getStatus(record);
+                const meta = formatTournamentMeta(record);
+                const t = record.tournament;
+                const isDim = status.cls === 'draft';
+                const code = `NTNUI · ${t.eventName.toUpperCase().replace(/\s+/g, '')}`;
+                return (
+                  <div key={record.id} className={`t-row${isDim ? ' dim' : ''}`}>
+                    <div className="t-name">
+                      <div className="ln1">
+                        <span className="name">{t.eventName}</span>
+                        <span className="code mono">{code}</span>
+                      </div>
+                      <div className="meta">
+                        <span className={`chip-l dot ${status.cls}`}>{status.label}</span>
+                        <span className="chip-l">{t.divisions.length} division{t.divisions.length !== 1 ? 's' : ''}</span>
+                        <span className="chip-l">{t.competitors.length} competitor{t.competitors.length !== 1 ? 's' : ''}</span>
+                        {meta.matches > 0 && <span className="chip-l">{meta.done} / {meta.matches} matches</span>}
+                      </div>
+                    </div>
+                    <div className="t-actions">
+                      <button className="btn-x" type="button" onClick={() => onGuestSelect(record.id)}>
+                        View brackets
+                      </button>
+                      <button
+                        className="btn-x primary"
+                        type="button"
+                        onClick={() => {
+                          setApplicationNotice('');
+                          setApplicationTournamentId(record.id);
+                        }}
+                        disabled={!applicationsReady}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          </div>
         </div>
       </main>
 
