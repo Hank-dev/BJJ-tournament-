@@ -1,85 +1,84 @@
-# BJJ Tournament App
+# BJJ Tournament Desk
 
-Vite + React tournament desk with a small Node backend for shared tournament storage.
+A full-stack tournament operations tool for Brazilian jiu-jitsu events: registrations, divisions, brackets, match scoring, scheduling, and shared persistent storage.
 
-## Local Development
+![BJJ Tournament Desk entry screen — public spectator view with tournament application](docs/screenshot-entry.png)
+
+> The entry screen separates public spectator access, competitor applications, and passcode-gated admin operations. The landing photo (club's own) establishes the event context.
+
+## Recruiter quick read
+
+| Signal | Evidence in this repository |
+|---|---|
+| **Startup product work** | One codebase covers participant intake, admin workflows, competition rules, and live event operations. |
+| **Domain modelling** | Rulesets, brackets, CSV import/export, weigh-ins, mat scheduling, and match state are explicit application concepts. |
+| **Full-stack delivery** | React/Vite frontend, Node API, local-first fallback, persistent server storage, health checks, and container deployment. |
+| **Quality** | Focused unit tests cover brackets, CSV handling, and rulesets; the production bundle is built in CI. |
+
+## Product flow
+
+1. Create or join a tournament.
+2. Import or register competitors and organise divisions.
+3. Generate brackets and assign matches to mats.
+4. Run scoring and match operations from the admin desk.
+5. Publish tournament state to guest and spectator views.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[React + TypeScript client] --> B{Storage mode}
+    B -->|local development| C[Browser localStorage]
+    B -->|shared tournament| D[Node API]
+    D --> E[Persistent JSON store]
+    F[Admin passcode] --> D
+    G[Railway volume or Docker volume] --> E
+```
+
+Local-first storage keeps frontend development fast. The same built client can be served by the Node backend when multiple devices need shared tournament state.
+
+## Local development
 
 ```bash
 npm install
 npm run dev
 ```
 
-The Vite dev server uses browser `localStorage` by default. To develop against the backend API too:
+The Vite development server uses browser `localStorage` by default.
+
+To exercise the shared backend path:
 
 ```bash
 npm run build
 ADMIN_PASSCODE=local-admin npm run dev:server
 ```
 
-Then open the backend URL from the terminal output. The backend serves `dist/` and stores data in `./data/tournament-store.json` unless `DATA_DIR` is set.
+The backend serves `dist/` and stores tournament state in `./data/tournament-store.json` unless `DATA_DIR` is set.
 
-## Railway Deployment
-
-Railway reads `railway.json`, builds with Railpack, runs `npm run build`, then starts the backend with `npm start`.
-
-Set these Railway variables:
-
-```text
-ADMIN_PASSCODE=<choose-a-real-admin-passcode>
-```
-
-For persistent tournament data, attach a Railway volume to the service. The backend automatically uses Railway's `RAILWAY_VOLUME_MOUNT_PATH` when a volume is attached. Without a volume, stored tournament data can be lost when the service is rebuilt or moved.
-
-The server listens on `0.0.0.0:$PORT`, which is required for Railway public networking.
-
-## VPS Deployment
-
-The simplest VPS setup is Docker Compose. The app builds the Vite frontend, runs the Node backend on port `3000`, and stores tournament data in a persistent Docker volume at `/app/data`.
-
-On the VPS:
+## Verify
 
 ```bash
-git clone <your-repo-url>
-cd <repo-directory>
+npm test -- --maxWorkers=1 --no-file-parallelism
+npm run build
+```
+
+## Deploy
+
+Railway reads `railway.json`, builds with Railpack, runs `npm run build`, and starts the backend with `npm start`. Set `ADMIN_PASSCODE` and attach a persistent volume; the backend automatically uses `RAILWAY_VOLUME_MOUNT_PATH` when available.
+
+For a VPS:
+
+```bash
 cp .env.example .env
-```
-
-Edit `.env` and set a real `ADMIN_PASSCODE`. Then start the app:
-
-```bash
+# set a real ADMIN_PASSCODE
 docker compose up -d --build
-docker compose ps
 curl http://127.0.0.1:3000/api/health
 ```
 
-If you are not using a domain yet, open `http://<your-vps-ip>:3000`. If you are using Nginx in front of the app, keep `APP_PORT=3000` and proxy your domain to the local container port:
+Tournament data lives in the `tournament_data` Docker volume at `/app/data`.
 
-```nginx
-server {
-  listen 80;
-  server_name your-domain.com;
+## Operational limitations
 
-  location / {
-    proxy_pass http://127.0.0.1:3000;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-}
-```
-
-To deploy updates after pushing new code:
-
-```bash
-git pull
-docker compose up -d --build
-```
-
-Tournament data is stored in the `tournament_data` Docker volume. To inspect or back it up:
-
-```bash
-docker compose exec tournament-app ls -lah /app/data
-docker compose cp tournament-app:/app/data/tournament-store.json ./tournament-store.backup.json
-```
+- The shared store is intentionally small and simple; it is not a multi-tenant database.
+- The admin passcode protects organiser actions but is not a full identity system.
+- Persistent storage must be attached in hosted environments or tournament state can disappear during redeploys.
